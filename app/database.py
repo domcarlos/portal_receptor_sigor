@@ -4,15 +4,11 @@ import json
 import os
 from datetime import datetime
 
-DB_PATH = os.getenv("DB_PATH", "portal_receptor.db")
-
-
-async def get_db():
-    return await aiosqlite.connect(DB_PATH)
+DB_PATH = os.getenv("DB_PATH", "/tmp/portal_receptor.db")
 
 
 async def init_db():
-    async with await get_db() as db:
+    async with aiosqlite.connect(DB_PATH) as db:
         await db.execute("""
             CREATE TABLE IF NOT EXISTS credentials (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -30,7 +26,7 @@ async def init_db():
 
 
 async def list_credentials():
-    async with await get_db() as db:
+    async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         cursor = await db.execute("SELECT * FROM credentials ORDER BY id DESC")
         rows = await cursor.fetchall()
@@ -38,7 +34,7 @@ async def list_credentials():
 
 
 async def get_credential(cred_id: int):
-    async with await get_db() as db:
+    async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         cursor = await db.execute("SELECT * FROM credentials WHERE id = ?", (cred_id,))
         row = await cursor.fetchone()
@@ -47,7 +43,7 @@ async def get_credential(cred_id: int):
 
 async def create_credential(data: dict):
     now = datetime.utcnow().isoformat()
-    async with await get_db() as db:
+    async with aiosqlite.connect(DB_PATH) as db:
         cursor = await db.execute(
             """INSERT INTO credentials (orgao, unidade, unidade_codigo, login, senha, responsaveis, created_at, updated_at)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
@@ -69,14 +65,14 @@ async def update_credential(cred_id: int, data: dict):
         return await get_credential(cred_id)
     fields.append("updated_at = ?")
     values.extend([now, cred_id])
-    async with await get_db() as db:
+    async with aiosqlite.connect(DB_PATH) as db:
         await db.execute(f"UPDATE credentials SET {', '.join(fields)} WHERE id = ?", values)
         await db.commit()
     return await get_credential(cred_id)
 
 
 async def delete_credential(cred_id: int):
-    async with await get_db() as db:
+    async with aiosqlite.connect(DB_PATH) as db:
         await db.execute("DELETE FROM credentials WHERE id = ?", (cred_id,))
         await db.commit()
 
