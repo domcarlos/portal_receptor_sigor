@@ -3,10 +3,8 @@ from pydantic import BaseModel, Field
 from typing import Optional
 
 
-# === Auth ===
-
 class SigorAuthRequest(BaseModel):
-    cpf: str = Field(..., description="CPF 11 digitos, sem pontos/tracos")
+    cpf: str = Field(..., description="CPF 11 digitos")
     senha: str
     unidade: int
 
@@ -15,8 +13,21 @@ class SigorAuthResponse(BaseModel):
     token: Optional[str] = None
     message: str
 
+class CredentialCreate(BaseModel):
+    orgao: str
+    unidade: str
+    unidade_codigo: int
+    login: str
+    senha: str
+    responsaveis: list[str] = []
 
-# === MTR Details ===
+class CredentialUpdate(BaseModel):
+    orgao: Optional[str] = None
+    unidade: Optional[str] = None
+    unidade_codigo: Optional[int] = None
+    login: Optional[str] = None
+    senha: Optional[str] = None
+    responsaveis: Optional[list[str]] = None
 
 class MTRResiduo(BaseModel):
     res_codigo_ibama: str
@@ -54,9 +65,6 @@ class MTRDetails(BaseModel):
     data_recebimento: Optional[str] = None
     residuos: list[MTRResiduo]
 
-
-# === Receive MTRs ===
-
 class MTROverride(BaseModel):
     motorista: Optional[str] = None
     placa: Optional[str] = None
@@ -64,10 +72,11 @@ class MTROverride(BaseModel):
     justificativa: Optional[str] = None
 
 class ReceiveMTRsRequest(BaseModel):
-    mtr_numbers: list[str] = Field(..., min_length=1, description="Lista de numeros MTR")
-    responsavel_recebimento: str = Field(..., description="Nome exato como cadastrado no SIGOR")
-    data_recebimento: Optional[str] = Field(None, description="ISO date (YYYY-MM-DD), default=hoje")
-    overrides: Optional[dict[str, MTROverride]] = Field(None, description="Overrides por numero MTR")
+    mtr_numbers: list[str] = Field(..., min_length=1)
+    responsavel_recebimento: str
+    data_recebimento: Optional[str] = None
+    credential_id: int
+    overrides: Optional[dict[str, MTROverride]] = None
 
 class MTRReceiveResult(BaseModel):
     mtr_numero: str
@@ -81,20 +90,3 @@ class ReceiveMTRsResponse(BaseModel):
     error_count: int
     skipped_count: int
     results: list[MTRReceiveResult]
-
-
-# === Pending MTRs (from MTR Manager) ===
-
-class PendingMTR(BaseModel):
-    numero: str
-    data_coleta: Optional[str] = None
-    gerador_nome: Optional[str] = None
-    transportador_nome: Optional[str] = None
-    material: Optional[str] = None
-    quantidade_estimada: Optional[float] = None
-    motorista: Optional[str] = None
-    placa: Optional[str] = None
-
-class PendingMTRsResponse(BaseModel):
-    total: int
-    mtrs: list[PendingMTR]
