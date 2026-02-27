@@ -1,1 +1,652 @@
-placeholder
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portal do Receptor - SIGOR | Musa</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔄</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'DM Sans', -apple-system, sans-serif; background: #FAFAF5; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<script type="text/babel">
+const { useState, useEffect, useCallback } = React;
+
+
+const API_BASE = "https://portal-receptor-sigor.onrender.com/api";
+
+// ========================
+// API helpers
+// ========================
+async function api(path, opts = {}) {
+  const res = await fetch(`${API_BASE}${path}`, {
+    headers: { "Content-Type": "application/json", Accept: "application/json", ...opts.headers },
+    ...opts,
+  });
+  if (opts.method === "DELETE" && res.status === 204) return null;
+  return res.json();
+}
+
+// ========================
+// Icons (inline SVG)
+// ========================
+const Icons = {
+  IdCard: () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><path d="M12 12h4"/><path d="M12 16h4"/><circle cx="8" cy="12" r="2"/><path d="M8 16v-1a2 2 0 0 1 2-2"/></svg>
+  ),
+  FileText: () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+  ),
+  Plus: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg>,
+  Pencil: () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>,
+  Trash: () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>,
+  X: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12"/></svg>,
+  Check: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 6 9 17l-5-5"/></svg>,
+  ChevronDown: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m6 9 6 6 6-6"/></svg>,
+  ChevronUp: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m18 15-6-6-6 6"/></svg>,
+  Filter: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>,
+  Download: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>,
+  Menu: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>,
+  LogOut: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>,
+};
+
+// ========================
+// Colors & Status config
+// ========================
+const STATUS_CONFIG = {
+  issued: { label: "Emitido", bg: "#FEF3C7", color: "#92400E", border: "#F59E0B" },
+  received: { label: "Recebido", bg: "#D1FAE5", color: "#065F46", border: "#10B981" },
+  pending: { label: "Pendente", bg: "#DBEAFE", color: "#1E40AF", border: "#3B82F6" },
+  incomplete: { label: "Incompleto", bg: "#FEE2E2", color: "#991B1B", border: "#EF4444" },
+  canceled: { label: "Cancelado", bg: "#F3F4F6", color: "#6B7280", border: "#9CA3AF" },
+  not_received: { label: "Não Recebido", bg: "#FED7AA", color: "#9A3412", border: "#F97316" },
+};
+
+const ORGAOS = [
+  { value: "CETESB", label: "CETESB - SIGOR SP", issuer: "sigor_sp" },
+  { value: "SEMAD_MG", label: "SEMAD - MG", issuer: "semad_mg" },
+  { value: "IEMA", label: "IEMA - ES", issuer: "iema_es" },
+  { value: "INEA", label: "INEA - RJ", issuer: "inea_rj" },
+  { value: "FEPAM", label: "FEPAM - RS", issuer: "fepam_rs" },
+  { value: "IAP", label: "IAP - SC", issuer: "ima_sc" },
+];
+
+// ========================
+// Styles
+// ========================
+const colors = {
+  bg: "#FAFAF5",
+  sidebar: "#FEFEF8",
+  sidebarBorder: "#E8E5D8",
+  primary: "#E8604C",
+  primaryHover: "#D4503E",
+  text: "#2D2A24",
+  textMuted: "#78756C",
+  cardBg: "#FFFFFF",
+  border: "#E8E5D8",
+  tableHover: "#FEFEF8",
+};
+
+// ========================
+// SIDEBAR
+// ========================
+function Sidebar({ page, setPage, collapsed, setCollapsed }) {
+  return (
+    <div style={{
+      width: collapsed ? 64 : 200,
+      minHeight: "100vh",
+      background: colors.sidebar,
+      borderRight: `1px solid ${colors.sidebarBorder}`,
+      display: "flex",
+      flexDirection: "column",
+      transition: "width 0.2s",
+      position: "fixed",
+      left: 0,
+      top: 0,
+      zIndex: 100,
+    }}>
+      <div style={{ padding: collapsed ? "16px 12px" : "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        {!collapsed && <div><div style={{ fontWeight: 800, fontSize: 20, color: colors.text }}>musa</div><div style={{ fontSize: 11, color: colors.textMuted }}>Receptor</div></div>}
+        <button onClick={() => setCollapsed(!collapsed)} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: colors.textMuted }}><Icons.Menu /></button>
+      </div>
+      <nav style={{ flex: 1, padding: "8px 8px" }}>
+        {[
+          { id: "credentials", icon: Icons.IdCard, label: "Credenciais" },
+          { id: "mtrs", icon: Icons.FileText, label: "MTRs" },
+        ].map((item) => {
+          const active = page === item.id;
+          return (
+            <button key={item.id} onClick={() => setPage(item.id)} style={{
+              display: "flex", alignItems: "center", gap: 10, width: "100%",
+              padding: collapsed ? "10px 14px" : "10px 16px",
+              marginBottom: 4, borderRadius: 8, border: "none", cursor: "pointer",
+              background: active ? colors.primary : "transparent",
+              color: active ? "#fff" : colors.text,
+              fontWeight: active ? 600 : 400, fontSize: 14,
+              transition: "all 0.15s",
+            }}>
+              <item.icon />
+              {!collapsed && item.label}
+            </button>
+          );
+        })}
+      </nav>
+      <div style={{ padding: collapsed ? "12px" : "16px 20px", borderTop: `1px solid ${colors.sidebarBorder}` }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ width: 32, height: 32, borderRadius: "50%", background: colors.primary, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13 }}>RC</div>
+          {!collapsed && <div style={{ fontSize: 12 }}><div style={{ fontWeight: 600 }}>Receptor</div><div style={{ color: colors.textMuted }}>receptor@musa.co</div></div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ========================
+// STATUS BADGE
+// ========================
+function StatusBadge({ status }) {
+  const cfg = STATUS_CONFIG[status] || { label: status, bg: "#F3F4F6", color: "#6B7280" };
+  return <span style={{ padding: "3px 10px", borderRadius: 12, fontSize: 11, fontWeight: 600, background: cfg.bg, color: cfg.color }}>{cfg.label}</span>;
+}
+
+// ========================
+// CREDENTIALS PAGE
+// ========================
+function CredentialsPage() {
+  const [credentials, setCredentials] = useState([]);
+  const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [form, setForm] = useState({ orgao: "CETESB", unidade: "", unidade_codigo: 0, login: "", senha: "", responsaveis: [] });
+  const [newResp, setNewResp] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [testResult, setTestResult] = useState(null);
+
+  const loadCredentials = useCallback(async () => {
+    setLoading(true);
+    const data = await api("/credentials");
+    setCredentials(Array.isArray(data) ? data : []);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { loadCredentials(); }, [loadCredentials]);
+
+  const handleSave = async () => {
+    if (editing) {
+      await api(`/credentials/${editing}`, { method: "PUT", body: JSON.stringify(form) });
+    } else {
+      await api("/credentials", { method: "POST", body: JSON.stringify(form) });
+    }
+    setShowForm(false);
+    setEditing(null);
+    setForm({ orgao: "CETESB", unidade: "", unidade_codigo: 0, login: "", senha: "", responsaveis: [] });
+    loadCredentials();
+  };
+
+  const handleDelete = async (id) => {
+    if (confirm("Tem certeza que deseja deletar esta credencial? Esta ação não pode ser desfeita.")) {
+      await api(`/credentials/${id}`, { method: "DELETE" });
+      loadCredentials();
+    }
+  };
+
+  const handleEdit = (cred) => {
+    setEditing(cred.id);
+    setForm({ orgao: cred.orgao, unidade: cred.unidade, unidade_codigo: cred.unidade_codigo, login: cred.login, senha: "", responsaveis: cred.responsaveis || [] });
+    setShowForm(true);
+  };
+
+  const handleTest = async (id) => {
+    setTestResult(null);
+    const res = await api(`/credentials/${id}/test`, { method: "POST" });
+    setTestResult({ id, ...res });
+    setTimeout(() => setTestResult(null), 4000);
+  };
+
+  const addResponsavel = () => {
+    if (newResp.trim() && !form.responsaveis.includes(newResp.trim())) {
+      setForm({ ...form, responsaveis: [...form.responsaveis, newResp.trim()] });
+      setNewResp("");
+    }
+  };
+
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+        <div>
+          <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0 }}>Credenciais</h1>
+          <p style={{ color: colors.textMuted, margin: "4px 0 0", fontSize: 14 }}>Gerencie as credenciais de acesso aos órgãos ambientais</p>
+        </div>
+        <button onClick={() => { setEditing(null); setForm({ orgao: "CETESB", unidade: "", unidade_codigo: 0, login: "", senha: "", responsaveis: [] }); setShowForm(true); }}
+          style={{ display: "flex", alignItems: "center", gap: 6, padding: "10px 20px", background: colors.primary, color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontWeight: 600, fontSize: 14 }}>
+          <Icons.Plus /> Nova Credencial
+        </button>
+      </div>
+
+      {/* Table */}
+      <div style={{ background: colors.cardBg, borderRadius: 12, border: `1px solid ${colors.border}`, overflow: "hidden" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead>
+            <tr style={{ borderBottom: `1px solid ${colors.border}` }}>
+              {["Órgão", "Unidade", "Login", "Responsáveis pela Recepção", "Última Atualização", "Ações"].map((h) => (
+                <th key={h} style={{ padding: "12px 16px", textAlign: "left", fontSize: 12, fontWeight: 600, color: colors.textMuted, textTransform: "uppercase", letterSpacing: 0.5 }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr><td colSpan={6} style={{ padding: 40, textAlign: "center", color: colors.textMuted }}>Carregando...</td></tr>
+            ) : credentials.length === 0 ? (
+              <tr><td colSpan={6} style={{ padding: 40, textAlign: "center", color: colors.textMuted }}>Nenhuma credencial cadastrada</td></tr>
+            ) : credentials.map((c) => (
+              <tr key={c.id} style={{ borderBottom: `1px solid ${colors.border}` }}>
+                <td style={{ padding: "14px 16px", fontWeight: 600 }}>{c.orgao}</td>
+                <td style={{ padding: "14px 16px" }}>{c.unidade}</td>
+                <td style={{ padding: "14px 16px", fontFamily: "monospace", fontSize: 13 }}>{c.login}</td>
+                <td style={{ padding: "14px 16px" }}>
+                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                    {(c.responsaveis || []).map((r) => (
+                      <span key={r} style={{ padding: "2px 10px", borderRadius: 12, background: "#F3F1E8", fontSize: 12, fontWeight: 500 }}>{r}</span>
+                    ))}
+                  </div>
+                </td>
+                <td style={{ padding: "14px 16px", fontSize: 13, color: colors.textMuted }}>{new Date(c.updated_at).toLocaleDateString("pt-BR")}</td>
+                <td style={{ padding: "14px 16px" }}>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <button onClick={() => handleTest(c.id)} title="Testar" style={{ background: "none", border: "none", cursor: "pointer", color: "#10B981", fontSize: 12, fontWeight: 600 }}>
+                      {testResult?.id === c.id ? (testResult.success ? "✓ OK" : "✗ Falha") : "Testar"}
+                    </button>
+                    <button onClick={() => handleEdit(c)} style={{ background: "none", border: "none", cursor: "pointer", color: colors.textMuted }}><Icons.Pencil /></button>
+                    <button onClick={() => handleDelete(c.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#DC2626" }}><Icons.Trash /></button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Modal */}
+      {showForm && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 }}>
+          <div style={{ background: "#fff", borderRadius: 16, padding: 32, width: 520, maxHeight: "90vh", overflow: "auto" }}>
+            <h2 style={{ margin: "0 0 20px", fontSize: 20, fontWeight: 700 }}>{editing ? "Editar" : "Nova"} Credencial</h2>
+            <div style={{ display: "grid", gap: 16 }}>
+              <div>
+                <label style={labelStyle}>Órgão</label>
+                <select value={form.orgao} onChange={(e) => setForm({ ...form, orgao: e.target.value })} style={inputStyle}>
+                  {ORGAOS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div><label style={labelStyle}>Unidade</label><input value={form.unidade} onChange={(e) => setForm({ ...form, unidade: e.target.value })} style={inputStyle} placeholder="Ex: São Paulo - Capital" /></div>
+                <div><label style={labelStyle}>Código Unidade</label><input type="number" value={form.unidade_codigo} onChange={(e) => setForm({ ...form, unidade_codigo: parseInt(e.target.value) || 0 })} style={inputStyle} placeholder="Ex: 1234" /></div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div><label style={labelStyle}>Login (CPF)</label><input value={form.login} onChange={(e) => setForm({ ...form, login: e.target.value })} style={inputStyle} placeholder="000.000.000-00" /></div>
+                <div><label style={labelStyle}>Senha{editing ? " (deixe vazio para manter)" : ""}</label><input type="password" value={form.senha} onChange={(e) => setForm({ ...form, senha: e.target.value })} style={inputStyle} /></div>
+              </div>
+              <div>
+                <label style={labelStyle}>Responsáveis pela Recepção</label>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input value={newResp} onChange={(e) => setNewResp(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addResponsavel())} style={{ ...inputStyle, flex: 1 }} placeholder="Nome do responsável" />
+                  <button onClick={addResponsavel} style={{ padding: "8px 16px", background: colors.primary, color: "#fff", border: "none", borderRadius: 8, cursor: "pointer" }}><Icons.Plus /></button>
+                </div>
+                <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 8 }}>
+                  {form.responsaveis.map((r) => (
+                    <span key={r} style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 10px", borderRadius: 12, background: "#F3F1E8", fontSize: 12 }}>
+                      {r}
+                      <button onClick={() => setForm({ ...form, responsaveis: form.responsaveis.filter((x) => x !== r) })} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, lineHeight: 1 }}><Icons.X /></button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 24 }}>
+              <button onClick={() => { setShowForm(false); setEditing(null); }} style={{ padding: "10px 20px", background: "transparent", border: `1px solid ${colors.border}`, borderRadius: 8, cursor: "pointer" }}>Cancelar</button>
+              <button onClick={handleSave} style={{ padding: "10px 20px", background: colors.primary, color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontWeight: 600 }}>Salvar</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ========================
+// MTRs PAGE
+// ========================
+function MTRsPage() {
+  const [mtrs, setMtrs] = useState([]);
+  const [pagination, setPagination] = useState({ page: 1, last_page: 1, count: 0, page_size: 20 });
+  const [loading, setLoading] = useState(true);
+  const [filtersOpen, setFiltersOpen] = useState(true);
+  const [filters, setFilters] = useState({ receiver_name: "", status: "issued", issuer: "sigor_sp", generator_name: "", hauler_name: "", number: "", planned_date_after: "", planned_date_before: "" });
+  const [activeStatus, setActiveStatus] = useState(null);
+  const [selected, setSelected] = useState(new Set());
+  const [credentials, setCredentials] = useState([]);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [receiveForm, setReceiveForm] = useState({ responsavel: "", data_recebimento: new Date().toISOString().slice(0, 10), credential_id: null });
+  const [validationProgress, setValidationProgress] = useState(null);
+
+  const loadMTRs = useCallback(async (page = 1) => {
+    setLoading(true);
+    const params = new URLSearchParams();
+    params.set("page", page);
+    params.set("page_size", pagination.page_size);
+    Object.entries(filters).forEach(([k, v]) => { if (v) params.set(k, v); });
+    const data = await api(`/mtrs?${params}`);
+    setMtrs(data?.results || []);
+    setPagination(data?.pagination || { page: 1, last_page: 1, count: 0, page_size: 20 });
+    setLoading(false);
+    setSelected(new Set());
+  }, [filters, pagination.page_size]);
+
+  useEffect(() => { loadMTRs(); }, [loadMTRs]);
+  useEffect(() => { api("/credentials").then((d) => setCredentials(Array.isArray(d) ? d : [])); }, []);
+
+  const statusCounts = mtrs.reduce((acc, m) => { acc[m.status] = (acc[m.status] || 0) + 1; return acc; }, {});
+
+  const toggleSelect = (id) => {
+    const next = new Set(selected);
+    next.has(id) ? next.delete(id) : next.add(id);
+    setSelected(next);
+  };
+
+  const toggleAll = () => {
+    if (selected.size === mtrs.length) setSelected(new Set());
+    else setSelected(new Set(mtrs.map((m) => m.id)));
+  };
+
+  const exportCSV = () => {
+    const rows = mtrs.map((m) => [m.number, m.status, m.issuer, m.driver_name, m.vehicle_plate, m.planned_date_at || m.planned_date_after || "", m.units_estimated].join(","));
+    const csv = "Numero,Status,Orgao,Motorista,Placa,Data Coleta,Peso Estimado\n" + rows.join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "mtrs_export.csv";
+    a.click();
+  };
+
+  const handleReceive = async () => {
+    setShowConfirmModal(false);
+    const selectedMtrs = mtrs.filter((m) => selected.has(m.id));
+    const mtr_numbers = selectedMtrs.map((m) => m.number).filter(Boolean);
+    if (!mtr_numbers.length) return;
+
+    setValidationProgress({ total: mtr_numbers.length, processed: 0, results: [], done: false });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+
+    const res = await api("/mtrs/receive", {
+      method: "POST",
+      body: JSON.stringify({
+        mtr_numbers,
+        responsavel_recebimento: receiveForm.responsavel,
+        data_recebimento: receiveForm.data_recebimento,
+        credential_id: receiveForm.credential_id,
+      }),
+    });
+
+    setValidationProgress({
+      total: res.total,
+      processed: res.total,
+      results: res.results || [],
+      done: true,
+      success_count: res.success_count,
+      error_count: res.error_count,
+    });
+    loadMTRs(pagination.page);
+  };
+
+  const allResponsaveis = credentials.flatMap((c) => c.responsaveis || []);
+  const uniqueResponsaveis = [...new Set(allResponsaveis)];
+  const selectedMtrs = mtrs.filter((m) => selected.has(m.id));
+  const selectedIssued = selectedMtrs.filter((m) => m.status === "issued");
+  const selectedIncomplete = selectedMtrs.filter((m) => !m.driver_name || !m.vehicle_plate);
+
+  return (
+    <div>
+      {/* Validation Progress Block */}
+      {validationProgress && (
+        <div style={{ background: colors.cardBg, borderRadius: 12, border: `1px solid ${colors.border}`, padding: 20, marginBottom: 20 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{validationProgress.done ? "Validação Concluída" : "Validando MTRs..."}</h3>
+              {validationProgress.done && (
+                <p style={{ margin: "4px 0 0", fontSize: 13, color: colors.textMuted }}>
+                  {validationProgress.success_count} sucesso(s), {validationProgress.error_count} falha(s)
+                </p>
+              )}
+            </div>
+            <button onClick={() => setValidationProgress(null)} style={{ background: "none", border: "none", cursor: "pointer", color: colors.textMuted }}><Icons.X /></button>
+          </div>
+          <div style={{ marginTop: 12, background: "#F3F1E8", borderRadius: 8, height: 6, overflow: "hidden" }}>
+            <div style={{ height: "100%", background: colors.primary, borderRadius: 8, width: `${validationProgress.done ? 100 : 50}%`, transition: "width 0.5s" }} />
+          </div>
+          {validationProgress.done && (
+            <div style={{ marginTop: 12, maxHeight: 200, overflow: "auto" }}>
+              {validationProgress.results.map((r, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", fontSize: 13, borderBottom: `1px solid ${colors.border}` }}>
+                  <span style={{ color: r.success ? "#10B981" : "#EF4444", fontWeight: 700 }}>{r.success ? "✓" : "✗"}</span>
+                  <span style={{ fontWeight: 600, fontFamily: "monospace" }}>{r.mtr_numero}</span>
+                  <span style={{ color: colors.textMuted }}>{r.message}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+        <div>
+          <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0 }}>Manifestos de Transporte (MTRs)</h1>
+          <p style={{ color: colors.textMuted, margin: "4px 0 0", fontSize: 14 }}>Visualize e gerencie os manifestos de transporte de resíduos</p>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div style={{ background: colors.cardBg, borderRadius: 12, border: `1px solid ${colors.border}`, marginBottom: 16 }}>
+        <button onClick={() => setFiltersOpen(!filtersOpen)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "14px 20px", background: "none", border: "none", cursor: "pointer", fontWeight: 600, fontSize: 14, color: colors.text }}>
+          <Icons.Filter /> Filtros {filtersOpen ? <Icons.ChevronUp /> : <Icons.ChevronDown />}
+        </button>
+        {filtersOpen && (
+          <div style={{ padding: "0 20px 20px", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+            <div><label style={labelStyle}>Receptor</label><input value={filters.receiver_name} onChange={(e) => setFilters({ ...filters, receiver_name: e.target.value })} style={inputStyle} placeholder="Nome do receptor" /></div>
+            <div><label style={labelStyle}>Órgão Emissor</label>
+              <select value={filters.issuer} onChange={(e) => setFilters({ ...filters, issuer: e.target.value })} style={inputStyle}>
+                <option value="">Todos</option>
+                {ORGAOS.map((o) => <option key={o.issuer} value={o.issuer}>{o.label}</option>)}
+              </select>
+            </div>
+            <div><label style={labelStyle}>Status</label>
+              <select value={filters.status} onChange={(e) => setFilters({ ...filters, status: e.target.value })} style={inputStyle}>
+                <option value="">Todos</option>
+                <option value="issued">Emitido</option>
+                <option value="received">Recebido</option>
+                <option value="pending">Pendente</option>
+                <option value="incomplete">Incompleto</option>
+                <option value="not_received">Não Recebido</option>
+              </select>
+            </div>
+            <div><label style={labelStyle}>Número MTR</label><input value={filters.number} onChange={(e) => setFilters({ ...filters, number: e.target.value })} style={inputStyle} placeholder="Ex: 260010502572" /></div>
+            <div><label style={labelStyle}>Gerador</label><input value={filters.generator_name} onChange={(e) => setFilters({ ...filters, generator_name: e.target.value })} style={inputStyle} /></div>
+            <div><label style={labelStyle}>Transportador</label><input value={filters.hauler_name} onChange={(e) => setFilters({ ...filters, hauler_name: e.target.value })} style={inputStyle} /></div>
+            <div><label style={labelStyle}>Data Coleta (De)</label><input type="date" value={filters.planned_date_after} onChange={(e) => setFilters({ ...filters, planned_date_after: e.target.value })} style={inputStyle} /></div>
+            <div><label style={labelStyle}>Data Coleta (Até)</label><input type="date" value={filters.planned_date_before} onChange={(e) => setFilters({ ...filters, planned_date_before: e.target.value })} style={inputStyle} /></div>
+          </div>
+        )}
+      </div>
+
+      {/* Big Numbers */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 12, marginBottom: 16 }}>
+        {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
+          <button key={key} onClick={() => {
+            if (activeStatus === key) { setActiveStatus(null); setFilters({ ...filters, status: "" }); }
+            else { setActiveStatus(key); setFilters({ ...filters, status: key }); }
+          }} style={{
+            padding: "16px", borderRadius: 12, border: `2px solid ${activeStatus === key ? cfg.border : colors.border}`,
+            background: colors.cardBg, cursor: "pointer", textAlign: "left", transition: "all 0.15s",
+          }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: cfg.color, textTransform: "uppercase" }}>{cfg.label}</div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: colors.text }}>{statusCounts[key] || 0}</div>
+          </button>
+        ))}
+      </div>
+
+      {/* Actions bar */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        <span style={{ fontSize: 13, color: colors.textMuted }}>Total de MTRs: {pagination.count}</span>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={exportCSV} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", background: "transparent", border: `1px solid ${colors.border}`, borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 500 }}>
+            <Icons.Download /> Exportar CSV
+          </button>
+          {selected.size > 0 && (
+            <button onClick={() => setShowConfirmModal(true)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", background: colors.primary, color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 600 }}>
+              <Icons.Check /> Validar Selecionados ({selected.size})
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Table */}
+      <div style={{ background: colors.cardBg, borderRadius: 12, border: `1px solid ${colors.border}`, overflow: "hidden" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead>
+            <tr style={{ borderBottom: `1px solid ${colors.border}` }}>
+              <th style={{ padding: "10px 12px", width: 40 }}>
+                <input type="checkbox" checked={selected.size === mtrs.length && mtrs.length > 0} onChange={toggleAll} />
+              </th>
+              {["Número MTR", "Órgão", "Data Coleta", "Gerador", "Transportador", "Motorista", "Placa", "Peso Est.", "Status"].map((h) => (
+                <th key={h} style={{ padding: "10px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: colors.textMuted, textTransform: "uppercase", letterSpacing: 0.5 }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr><td colSpan={10} style={{ padding: 40, textAlign: "center", color: colors.textMuted }}>Carregando MTRs...</td></tr>
+            ) : mtrs.length === 0 ? (
+              <tr><td colSpan={10} style={{ padding: 40, textAlign: "center", color: colors.textMuted }}>Nenhum MTR encontrado. Ajuste os filtros.</td></tr>
+            ) : mtrs.map((m) => (
+              <tr key={m.id} style={{ borderBottom: `1px solid ${colors.border}`, background: selected.has(m.id) ? "#FEF9EE" : "transparent" }}>
+                <td style={{ padding: "10px 12px" }}><input type="checkbox" checked={selected.has(m.id)} onChange={() => toggleSelect(m.id)} /></td>
+                <td style={{ padding: "10px 12px", fontFamily: "monospace", fontSize: 12, fontWeight: 600 }}>{m.number || "-"}</td>
+                <td style={{ padding: "10px 12px", fontSize: 12 }}>{m.issuer?.toUpperCase().replace("_", " ")}</td>
+                <td style={{ padding: "10px 12px", fontSize: 12 }}>{m.planned_date_at || "-"}</td>
+                <td style={{ padding: "10px 12px", fontSize: 12, maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.generator_name || "-"}</td>
+                <td style={{ padding: "10px 12px", fontSize: 12, maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.hauler_name || "-"}</td>
+                <td style={{ padding: "10px 12px", fontSize: 12 }}>{m.driver_name || <span style={{ color: "#DC2626", fontSize: 11 }}>sem motorista</span>}</td>
+                <td style={{ padding: "10px 12px", fontSize: 12, fontFamily: "monospace" }}>{m.vehicle_plate || <span style={{ color: "#DC2626", fontSize: 11 }}>sem placa</span>}</td>
+                <td style={{ padding: "10px 12px", fontSize: 12 }}>{m.units_estimated ? `${m.units_estimated} kg` : "-"}</td>
+                <td style={{ padding: "10px 12px" }}><StatusBadge status={m.status} /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Pagination */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12, fontSize: 13, color: colors.textMuted }}>
+        <span>Página {pagination.page} de {pagination.last_page} ({pagination.count} MTRs)</span>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button disabled={pagination.page <= 1} onClick={() => loadMTRs(pagination.page - 1)} style={{ padding: "6px 14px", borderRadius: 6, border: `1px solid ${colors.border}`, background: "transparent", cursor: pagination.page <= 1 ? "default" : "pointer", opacity: pagination.page <= 1 ? 0.4 : 1 }}>Anterior</button>
+          <button disabled={pagination.page >= pagination.last_page} onClick={() => loadMTRs(pagination.page + 1)} style={{ padding: "6px 14px", borderRadius: 6, border: `1px solid ${colors.border}`, background: "transparent", cursor: pagination.page >= pagination.last_page ? "default" : "pointer", opacity: pagination.page >= pagination.last_page ? 0.4 : 1 }}>Próxima</button>
+        </div>
+      </div>
+
+      {/* Confirm Receive Modal */}
+      {showConfirmModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 }}>
+          <div style={{ background: "#fff", borderRadius: 16, padding: 32, width: 520, maxHeight: "90vh", overflow: "auto" }}>
+            <h2 style={{ margin: "0 0 16px", fontSize: 20, fontWeight: 700 }}>Confirmar Validação de MTRs</h2>
+            <p style={{ fontSize: 14, color: colors.textMuted, marginBottom: 16 }}>Revise as informações antes de confirmar a validação dos MTRs</p>
+
+            <div style={{ display: "grid", gap: 12, marginBottom: 16 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", background: "#F9F8F3", borderRadius: 8 }}>
+                <span>MTRs selecionados</span><span style={{ fontWeight: 700 }}>{selected.size}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", background: "#F9F8F3", borderRadius: 8 }}>
+                <span>MTRs a validar (emitidos)</span><span style={{ fontWeight: 700, color: "#10B981" }}>{selectedIssued.length}</span>
+              </div>
+            </div>
+
+            {selectedIncomplete.length > 0 && (
+              <div style={{ padding: "10px 14px", background: "#FEF2F2", borderRadius: 8, marginBottom: 12, fontSize: 13, color: "#991B1B" }}>
+                ⚠ {selectedIncomplete.length} MTR(s) sem motorista ou placa — podem falhar na validação
+              </div>
+            )}
+
+            <div style={{ padding: "10px 14px", background: "#FFFBEB", borderRadius: 8, marginBottom: 16, fontSize: 13, color: "#92400E" }}>
+              ℹ Confira se os pesos estão corretos antes de validar
+            </div>
+
+            <div style={{ display: "grid", gap: 12 }}>
+              <div>
+                <label style={labelStyle}>Credencial</label>
+                <select value={receiveForm.credential_id || ""} onChange={(e) => setReceiveForm({ ...receiveForm, credential_id: parseInt(e.target.value) || null })} style={inputStyle}>
+                  <option value="">Selecione a credencial</option>
+                  {credentials.map((c) => <option key={c.id} value={c.id}>{c.orgao} - {c.unidade} ({c.login})</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={labelStyle}>Responsável pela Recepção</label>
+                <select value={receiveForm.responsavel} onChange={(e) => setReceiveForm({ ...receiveForm, responsavel: e.target.value })} style={inputStyle}>
+                  <option value="">Selecione o responsável</option>
+                  {uniqueResponsaveis.map((r) => <option key={r} value={r}>{r}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={labelStyle}>Data de Recebimento</label>
+                <input type="date" value={receiveForm.data_recebimento} onChange={(e) => setReceiveForm({ ...receiveForm, data_recebimento: e.target.value })} style={inputStyle} />
+              </div>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 24 }}>
+              <button onClick={() => setShowConfirmModal(false)} style={{ padding: "10px 20px", background: "transparent", border: `1px solid ${colors.border}`, borderRadius: 8, cursor: "pointer" }}>Cancelar</button>
+              <button onClick={handleReceive} disabled={!receiveForm.responsavel || !receiveForm.credential_id || selectedIssued.length === 0}
+                style={{ padding: "10px 20px", background: colors.primary, color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontWeight: 600, opacity: (!receiveForm.responsavel || !receiveForm.credential_id || selectedIssued.length === 0) ? 0.5 : 1 }}>
+                Iniciar Validação
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ========================
+// Shared styles
+// ========================
+const labelStyle = { display: "block", fontSize: 12, fontWeight: 600, color: "#78756C", marginBottom: 4 };
+const inputStyle = { width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid #E8E5D8", fontSize: 13, background: "#FAFAF5", outline: "none", boxSizing: "border-box" };
+
+// ========================
+// APP
+// ========================
+function App() {
+  const [page, setPage] = useState("credentials");
+  const [collapsed, setCollapsed] = useState(false);
+
+  return (
+    <div style={{ display: "flex", minHeight: "100vh", background: colors.bg, fontFamily: "'DM Sans', -apple-system, sans-serif", color: colors.text }}>
+      <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+      <Sidebar page={page} setPage={setPage} collapsed={collapsed} setCollapsed={setCollapsed} />
+      <main style={{ flex: 1, marginLeft: collapsed ? 64 : 200, padding: "32px 40px", transition: "margin-left 0.2s" }}>
+        {page === "credentials" ? <CredentialsPage /> : <MTRsPage />}
+      </main>
+    </div>
+  );
+}
+
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
