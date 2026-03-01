@@ -7,6 +7,7 @@ import os
 import logging
 
 from app.routes import router
+from app.mtr_routes import mtr_router
 from app.database import init_db
 
 load_dotenv()
@@ -36,6 +37,7 @@ app.add_middleware(
 )
 
 app.include_router(router, prefix="/api")
+app.include_router(mtr_router, prefix="/api")
 
 
 @app.get("/health")

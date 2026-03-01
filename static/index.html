@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portal do Receptor - SIGOR</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'DM Sans',-apple-system,sans-serif;background:#FAFAF5}#loading{display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:16px;color:#78756C}#loading .spinner{width:40px;height:40px;border:4px solid #E8E5D8;border-top:4px solid #E8604C;border-radius:50%;animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}</style>
+</head>
+<body>
+<div id="root"><div id="loading"><div class="spinner"></div><p>Carregando Portal do Receptor...</p></div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<script>
+fetch('/static/app.jsx').then(r=>r.text()).then(code=>{
+const script=document.createElement('script');
+script.type='text/babel';
+script.textContent=code+'\nReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));';
+document.body.appendChild(script);
+window.dispatchEvent(new Event('DOMContentLoaded'));
+}).catch(e=>{document.getElementById('loading').innerHTML='<p style="color:#DC2626">Erro ao carregar: '+e.message+'</p>';});
+</script>
+</body>
+</html>
