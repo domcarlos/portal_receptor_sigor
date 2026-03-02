@@ -8,7 +8,6 @@ from typing import Optional, List
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-
 _mtr_manager = None
 
 
@@ -51,7 +50,7 @@ async def list_mtrs(
         page_size=page_size,
     )
 
-    # Enrich results with saved metadata (motorista, placa)
+    # Enrich results with saved metadata (motorista, placa, peso_coletado)
     collect_ids = [r["collect_id"] for r in data.get("results", []) if r.get("collect_id")]
     if collect_ids:
         metadata = await database.get_bulk_collection_metadata(collect_ids)
@@ -60,15 +59,75 @@ async def list_mtrs(
             if cid and cid in metadata:
                 r["motorista"] = metadata[cid].get("motorista", "")
                 r["placa"] = metadata[cid].get("placa", "")
+                r["peso_coletado"] = metadata[cid].get("peso_coletado", 0)
             else:
                 r["motorista"] = ""
                 r["placa"] = ""
+                r["peso_coletado"] = 0
     else:
         for r in data.get("results", []):
             r["motorista"] = ""
             r["placa"] = ""
+            r["peso_coletado"] = 0
 
     return data
+
+
+# =====================
+# CREDENTIALS
+# =====================
+
+class CredentialCreate(BaseModel):
+    orgao: str
+    unidade: str
+    unidade_codigo: int
+    login: str
+    senha: str
+    responsaveis: Optional[List[str]] = []
+
+
+class CredentialUpdate(BaseModel):
+    orgao: Optional[str] = None
+    unidade: Optional[str] = None
+    unidade_codigo: Optional[int] = None
+    login: Optional[str] = None
+    senha: Optional[str] = None
+    responsaveis: Optional[List[str]] = None
+
+
+@router.get("/credentials")
+async def list_credentials():
+    return await database.list_credentials()
+
+
+@router.get("/credentials/{cred_id}")
+async def get_credential(cred_id: int):
+    cred = await database.get_credential(cred_id)
+    if not cred:
+        raise HTTPException(status_code=404, detail="Credencial nao encontrada")
+    return cred
+
+
+@router.post("/credentials")
+async def create_credential(data: CredentialCreate):
+    return await database.create_credential(data.model_dump())
+
+
+@router.put("/credentials/{cred_id}")
+async def update_credential(cred_id: int, data: CredentialUpdate):
+    existing = await database.get_credential(cred_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Credencial nao encontrada")
+    return await database.update_credential(cred_id, data.model_dump(exclude_unset=True))
+
+
+@router.delete("/credentials/{cred_id}")
+async def delete_credential(cred_id: int):
+    existing = await database.get_credential(cred_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Credencial nao encontrada")
+    await database.delete_credential(cred_id)
+    return {"detail": "Credencial removida"}
 
 
 # =====================
@@ -78,12 +137,13 @@ async def list_mtrs(
 class MetadataUpdate(BaseModel):
     motorista: Optional[str] = None
     placa: Optional[str] = None
+    peso_coletado: Optional[float] = None
     observacao: Optional[str] = None
 
 
 @router.put("/coletas/{collect_id}/metadata")
 async def update_collection_metadata(collect_id: str, data: MetadataUpdate):
-    """Save motorista/placa for a collection."""
+    """Save motorista/placa/peso_coletado for a collection."""
     update_data = {k: v for k, v in data.model_dump().items() if v is not None}
     if not update_data:
         raise HTTPException(status_code=400, detail="Nenhum campo para atualizar")
@@ -95,16 +155,19 @@ class BulkMetadataUpdate(BaseModel):
     collect_ids: List[str]
     motorista: Optional[str] = None
     placa: Optional[str] = None
+    peso_coletado: Optional[float] = None
 
 
 @router.put("/coletas/metadata/bulk")
 async def bulk_update_metadata(data: BulkMetadataUpdate):
-    """Save motorista/placa for multiple collections at once."""
+    """Save motorista/placa/peso_coletado for multiple collections at once."""
     update_data = {}
     if data.motorista is not None:
         update_data["motorista"] = data.motorista
     if data.placa is not None:
         update_data["placa"] = data.placa
+    if data.peso_coletado is not None:
+        update_data["peso_coletado"] = data.peso_coletado
     if not update_data:
         raise HTTPException(status_code=400, detail="Nenhum campo para atualizar")
     results = []
