@@ -7,7 +7,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
     <style>
-        :root { --musa-green: #00a86b; --musa-dark: #1a1a2e; --sidebar-w: 220px; }
+        :root { --musa-green: #00a86b; --musa-dark: #1a1a2e; --sidebar-w: 220px; --orange: #e67e22; --red: #e74c3c; --blue: #2980b9; --gray: #95a5a6; --purple: #8e44ad; }
         * { box-sizing: border-box; }
         body { margin: 0; font-family: 'Segoe UI', system-ui, sans-serif; background: #f5f5f5; }
 
@@ -21,9 +21,9 @@
         .sidebar-nav a:hover { background: #f0f0f0; }
         .sidebar-nav a.active { background: var(--musa-green); color: white; font-weight: 600; }
         .sidebar-user { padding: 12px 20px; border-top: 1px solid #e9ecef; display: flex; align-items: center; gap: 10px; }
-        .sidebar-user .avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--musa-green); color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.8rem; }
-        .sidebar-user .user-info { font-size: 0.8rem; }
-        .sidebar-user .user-info div:first-child { font-weight: 600; color: #333; }
+        .sidebar-user .avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--musa-green); color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.8rem; flex-shrink: 0; }
+        .sidebar-user .user-info { font-size: 0.78rem; overflow: hidden; }
+        .sidebar-user .user-info div:first-child { font-weight: 600; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .sidebar-user .user-info div:last-child { color: #6c757d; }
 
         /* Main */
@@ -35,28 +35,22 @@
 
         /* Filters */
         .filters-card { background: white; border-radius: 10px; border: 1px solid #e9ecef; padding: 16px 20px; margin-bottom: 20px; }
-        .filters-toggle { cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: 600; color: #495057; font-size: 0.9rem; }
+        .filters-toggle { cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: 600; color: #495057; font-size: 0.9rem; user-select: none; }
         .filters-body { margin-top: 12px; }
         .filters-body label { font-size: 0.8rem; color: #6c757d; margin-bottom: 4px; font-weight: 500; }
         .filters-body .form-control, .filters-body .form-select { font-size: 0.85rem; border-radius: 6px; }
 
         /* Stat cards */
         .stat-cards { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
-        .stat-card { flex: 1; min-width: 120px; background: white; border-radius: 10px; border: 1px solid #e9ecef; padding: 14px 18px; }
-        .stat-card .label { font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 4px; }
+        .stat-card { flex: 1; min-width: 130px; background: white; border-radius: 10px; border: 1px solid #e9ecef; padding: 14px 18px; cursor: default; }
+        .stat-card .label { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 4px; }
         .stat-card .number { font-size: 1.8rem; font-weight: 700; color: #333; }
-        .stat-card.pendente .label { color: #e67e22; }
-        .stat-card.pendente { border-left: 3px solid #e67e22; }
-        .stat-card.incompleto .label { color: #e74c3c; }
-        .stat-card.incompleto { border-left: 3px solid #e74c3c; }
-        .stat-card.completo .label { color: #27ae60; }
-        .stat-card.completo { border-left: 3px solid #27ae60; }
-        .stat-card.cancelado .label { color: #95a5a6; }
-        .stat-card.cancelado { border-left: 3px solid #95a5a6; }
-        .stat-card.validado .label { color: #2980b9; }
-        .stat-card.validado { border-left: 3px solid #2980b9; }
-        .stat-card.total .label { color: #495057; }
-        .stat-card.total { border-left: 3px solid #495057; }
+        .stat-card.pendente { border-left: 3px solid var(--orange); } .stat-card.pendente .label { color: var(--orange); }
+        .stat-card.expirar { border-left: 3px solid var(--red); } .stat-card.expirar .label { color: var(--red); }
+        .stat-card.incompleto { border-left: 3px solid var(--purple); } .stat-card.incompleto .label { color: var(--purple); }
+        .stat-card.processando { border-left: 3px solid var(--blue); } .stat-card.processando .label { color: var(--blue); }
+        .stat-card.falha { border-left: 3px solid #c0392b; } .stat-card.falha .label { color: #c0392b; }
+        .stat-card.validado { border-left: 3px solid var(--musa-green); } .stat-card.validado .label { color: var(--musa-green); }
 
         /* Table */
         .table-card { background: white; border-radius: 10px; border: 1px solid #e9ecef; overflow: hidden; }
@@ -65,23 +59,29 @@
         .table-header .total-info strong { color: #333; }
         .btn-export { background: white; border: 1px solid #dee2e6; color: #495057; border-radius: 6px; font-size: 0.85rem; padding: 6px 14px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
         .btn-export:hover { background: #f8f9fa; }
+        .btn-validate { background: var(--musa-green); border: none; color: white; border-radius: 6px; font-size: 0.85rem; padding: 6px 16px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-weight: 600; }
+        .btn-validate:hover { background: #009960; }
+        .btn-validate:disabled { opacity: 0.5; cursor: not-allowed; }
         .table-scroll { overflow-x: auto; max-height: 550px; overflow-y: auto; }
         table { width: 100%; border-collapse: collapse; }
-        table thead th { background: #fafafa; color: #6c757d; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; padding: 10px 12px; border-bottom: 2px solid #e9ecef; position: sticky; top: 0; z-index: 1; white-space: nowrap; }
-        table tbody td { padding: 10px 12px; font-size: 0.83rem; border-bottom: 1px solid #f0f0f0; color: #333; vertical-align: middle; }
+        table thead th { background: #fafafa; color: #6c757d; font-size: 0.73rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; padding: 10px 10px; border-bottom: 2px solid #e9ecef; position: sticky; top: 0; z-index: 1; white-space: nowrap; }
+        table tbody td { padding: 8px 10px; font-size: 0.82rem; border-bottom: 1px solid #f0f0f0; color: #333; vertical-align: middle; }
         table tbody tr:hover { background: #f8fffe; }
+        table tbody tr.selected { background: #e8f8ef; }
+        th.check-col, td.check-col { width: 36px; text-align: center; }
+        input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--musa-green); cursor: pointer; }
+
+        /* Editable cells */
+        .editable-cell { cursor: pointer; min-width: 100px; padding: 2px 4px; border-radius: 4px; transition: background 0.15s; }
+        .editable-cell:hover { background: #e9ecef; }
+        .editable-cell.empty { color: #c0392b; font-style: italic; font-size: 0.78rem; }
+        .editable-cell input { width: 100%; border: 1px solid var(--musa-green); border-radius: 4px; padding: 2px 6px; font-size: 0.82rem; outline: none; }
+        .editable-cell .save-indicator { color: var(--musa-green); font-size: 0.7rem; margin-left: 4px; }
 
         /* Status badges */
         .badge-status { font-size: 0.72rem; padding: 3px 10px; border-radius: 20px; font-weight: 600; white-space: nowrap; }
+        .badge-emitido { background: #fef3e2; color: #e67e22; }
         .badge-pendente { background: #fef3e2; color: #e67e22; }
-        .badge-incompleto { background: #fdecea; color: #e74c3c; }
-        .badge-completo { background: #e8f8ef; color: #27ae60; }
-        .badge-cancelado { background: #f0f0f0; color: #95a5a6; }
-        .badge-validado, .badge-validados { background: #e8f0fe; color: #2980b9; }
-        .badge-emitido { background: #e8f8ef; color: #27ae60; }
-        .badge-recebido { background: #e8f0fe; color: #2980b9; }
-
-        .text-placeholder { color: #ccc; font-style: italic; font-size: 0.8rem; }
 
         /* Pagination */
         .table-footer { padding: 12px 20px; border-top: 1px solid #e9ecef; display: flex; justify-content: space-between; align-items: center; }
@@ -96,9 +96,13 @@
         .spinner { width: 40px; height: 40px; border: 3px solid #e9ecef; border-top-color: var(--musa-green); border-radius: 50%; animation: spin 0.7s linear infinite; margin: 0 auto 16px; }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* Empty */
+        /* Empty / Error */
         .empty-state { text-align: center; padding: 60px 20px; }
         .empty-state i { font-size: 3rem; color: #dee2e6; display: block; margin-bottom: 12px; }
+
+        /* Selection bar */
+        .selection-bar { background: var(--musa-dark); color: white; padding: 10px 20px; border-radius: 8px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; }
+        .selection-bar .count { font-weight: 600; }
 
         /* Responsive */
         @media (max-width: 768px) {
@@ -107,7 +111,7 @@
             .main-body { padding: 16px; }
             .stat-cards { gap: 8px; }
             .stat-card { min-width: 90px; padding: 10px; }
-            .stat-card .number { font-size: 1.4rem; }
+            .stat-card .number { font-size: 1.3rem; }
         }
     </style>
 </head>
@@ -119,13 +123,13 @@
             <small>Receptor</small>
         </div>
         <div class="sidebar-nav">
-            <a href="#" id="nav-credenciais"><i class="bi bi-key"></i> Credenciais</a>
-            <a href="#" id="nav-mtrs" class="active"><i class="bi bi-file-earmark-text"></i> MTRs</a>
+            <a href="#"><i class="bi bi-key"></i> Credenciais</a>
+            <a href="#" class="active"><i class="bi bi-file-earmark-text"></i> MTRs</a>
         </div>
         <div class="sidebar-user">
             <div class="avatar">RC</div>
             <div class="user-info">
-                <div>Receptor</div>
+                <div id="sidebar-receptor-name">Receptor</div>
                 <div>receptor@musa.co</div>
             </div>
         </div>
@@ -135,14 +139,14 @@
     <div class="main">
         <div class="main-header">
             <h4>Manifestos de Transporte (MTRs)</h4>
-            <p>Visualize e gerencie os manifestos de transporte de residuos</p>
+            <p id="header-subtitle">Visualize e gerencie os manifestos de transporte de residuos</p>
         </div>
 
         <div class="main-body">
             <!-- Loading -->
             <div id="loading" class="loading" style="display:none;">
                 <div class="spinner"></div>
-                <p style="color:#6c757d;">Carregando MTRs...</p>
+                <p style="color:#6c757d;">Carregando MTRs emitidos...</p>
             </div>
 
             <!-- No receptor -->
@@ -176,26 +180,12 @@
                     </div>
                     <div class="filters-body" id="filters-body">
                         <div class="row g-2 mt-1">
-                            <div class="col-md-3">
-                                <label>Receptor</label>
-                                <input type="text" class="form-control form-control-sm" id="filter-receptor" readonly>
-                            </div>
                             <div class="col-md-2">
                                 <label>Orgao Emissor</label>
                                 <select class="form-select form-select-sm" id="filter-orgao" onchange="filterTable()">
                                     <option value="">Todos</option>
                                     <option value="SIGOR">SIGOR - SP</option>
                                     <option value="SINIR">SINIR</option>
-                                </select>
-                            </div>
-                            <div class="col-md-2">
-                                <label>Status</label>
-                                <select class="form-select form-select-sm" id="filter-status" onchange="filterTable()">
-                                    <option value="">Todos</option>
-                                    <option value="Pendente">Pendente</option>
-                                    <option value="Incompleto">Incompleto</option>
-                                    <option value="Completo">Completo</option>
-                                    <option value="Cancelado">Cancelado</option>
                                 </select>
                             </div>
                             <div class="col-md-2">
@@ -211,6 +201,10 @@
                                 <input type="text" class="form-control form-control-sm" id="filter-transportador" placeholder="Nome do transportador" oninput="filterTable()">
                             </div>
                             <div class="col-md-2">
+                                <label>Material / Residuo</label>
+                                <input type="text" class="form-control form-control-sm" id="filter-material" placeholder="Reciclavel..." oninput="filterTable()">
+                            </div>
+                            <div class="col-md-2">
                                 <label>Data Coleta (De)</label>
                                 <input type="date" class="form-control form-control-sm" id="filter-date-from" onchange="filterTable()">
                             </div>
@@ -219,15 +213,35 @@
                                 <input type="date" class="form-control form-control-sm" id="filter-date-to" onchange="filterTable()">
                             </div>
                             <div class="col-md-2">
-                                <label>Material / Residuo</label>
-                                <input type="text" class="form-control form-control-sm" id="filter-material" placeholder="Reciclavel, Rejeito..." oninput="filterTable()">
+                                <label>Motorista</label>
+                                <input type="text" class="form-control form-control-sm" id="filter-motorista" placeholder="Nome do motorista" oninput="filterTable()">
+                            </div>
+                            <div class="col-md-2">
+                                <label>Placa</label>
+                                <input type="text" class="form-control form-control-sm" id="filter-placa" placeholder="ABC-1234" oninput="filterTable()">
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Stat cards -->
-                <div class="stat-cards" id="stat-cards"></div>
+                <div class="stat-cards">
+                    <div class="stat-card pendente"><div class="label">Pendentes</div><div class="number" id="stat-pendente">0</div></div>
+                    <div class="stat-card expirar"><div class="label">A Expirar</div><div class="number" id="stat-expirar">0</div></div>
+                    <div class="stat-card incompleto"><div class="label">Incompletos</div><div class="number" id="stat-incompleto">0</div></div>
+                    <div class="stat-card processando"><div class="label">Processando</div><div class="number" id="stat-processando">0</div></div>
+                    <div class="stat-card falha"><div class="label">Falha</div><div class="number" id="stat-falha">0</div></div>
+                    <div class="stat-card validado"><div class="label">Validados</div><div class="number" id="stat-validado">0</div></div>
+                </div>
+
+                <!-- Selection bar -->
+                <div class="selection-bar" id="selection-bar" style="display:none;">
+                    <span><span class="count" id="selected-count">0</span> MTR(s) selecionado(s)</span>
+                    <div style="display:flex; gap:8px;">
+                        <button class="btn btn-sm" style="border:1px solid white; color:white;" onclick="clearSelection()">Limpar</button>
+                        <button class="btn-validate" onclick="validateSelected()"><i class="bi bi-check-circle"></i> Validar Selecionados</button>
+                    </div>
+                </div>
 
                 <!-- Table -->
                 <div class="table-card">
@@ -241,16 +255,16 @@
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Numero MTR</th>
-                                    <th>Orgao</th>
+                                    <th class="check-col"><input type="checkbox" id="select-all" onchange="toggleSelectAll(this)"></th>
+                                    <th>Residuo</th>
                                     <th>Data Coleta</th>
+                                    <th>Numero MTR</th>
                                     <th>Gerador</th>
                                     <th>Transportador</th>
                                     <th>Motorista</th>
                                     <th>Placa</th>
-                                    <th>Material</th>
                                     <th>Tratamento</th>
-                                    <th class="text-end">Peso Est.</th>
+                                    <th class="text-end">Peso (kg)</th>
                                     <th>Status</th>
                                 </tr>
                             </thead>
@@ -259,7 +273,7 @@
                     </div>
                     <div class="table-footer">
                         <div class="info" id="pagination-info">-</div>
-                        <div style="display:flex; gap:6px;">
+                        <div style="display:flex; gap:6px; align-items:center;">
                             <button class="btn-page" id="btn-prev" onclick="changePage(-1)"><i class="bi bi-chevron-left"></i></button>
                             <span class="btn-page active" id="page-number">1</span>
                             <button class="btn-page" id="btn-next" onclick="changePage(1)"><i class="bi bi-chevron-right"></i></button>
@@ -273,17 +287,22 @@
     <script>
         var API_BASE = 'https://portal-receptor-sigor.onrender.com/api';
         var allResults = [];
+        var filteredResults = [];
+        var selectedIds = {};
         var currentPage = 1;
         var totalCount = 0;
         var lastPage = 1;
         var pageSize = 100;
         var receptorName = '';
+        // Local validation state (persists in memory for this session)
+        var validationState = {}; // collect_id -> 'processando' | 'falha' | 'validado'
 
         function init() {
             var params = new URLSearchParams(window.location.search);
             receptorName = params.get('receptor') || '';
             if (receptorName) {
-                document.getElementById('filter-receptor').value = receptorName;
+                document.getElementById('sidebar-receptor-name').textContent = receptorName;
+                document.getElementById('header-subtitle').textContent = 'Receptor: ' + receptorName;
                 loadData();
             } else {
                 showState('no-receptor');
@@ -320,7 +339,8 @@
         async function loadData() {
             showState('loading');
             try {
-                var url = API_BASE + '/mtrs?receiver_name=' + encodeURIComponent(receptorName) + '&page_size=' + pageSize;
+                var url = API_BASE + '/mtrs?receiver_name=' + encodeURIComponent(receptorName)
+                    + '&status=issued&page_size=' + pageSize + '&page=' + currentPage;
                 var resp = await fetch(url);
                 if (!resp.ok) throw new Error('HTTP ' + resp.status);
                 var data = await resp.json();
@@ -337,95 +357,220 @@
         }
 
         function renderAll() {
-            renderStatCards();
+            updateStatCards();
             document.getElementById('total-count').textContent = totalCount.toLocaleString('pt-BR');
             document.getElementById('page-number').textContent = currentPage;
             filterTable();
             updatePagination();
         }
 
-        function renderStatCards() {
-            var counts = {};
+        function updateStatCards() {
+            var now = new Date();
+            var pendente = 0, expirar = 0, incompleto = 0, processando = 0, falha = 0, validado = 0;
+
             allResults.forEach(function(r) {
-                var s = r.collect_status || 'Outro';
-                counts[s] = (counts[s] || 0) + 1;
-            });
+                var cid = r.collect_id;
+                var state = validationState[cid];
 
-            var order = ['Pendente', 'Incompleto', 'Completo', 'Cancelado'];
-            var html = '';
+                if (state === 'processando') { processando++; return; }
+                if (state === 'falha') { falha++; return; }
+                if (state === 'validado') { validado++; return; }
 
-            // Add each status card
-            order.forEach(function(status) {
-                var count = counts[status] || 0;
-                var cls = status.toLowerCase();
-                html += '<div class="stat-card ' + cls + '">' +
-                    '<div class="label">' + status + '</div>' +
-                    '<div class="number">' + count + '</div></div>';
-            });
+                // Pendente de baixa (all emitted not validated)
+                pendente++;
 
-            // Any other statuses
-            Object.keys(counts).forEach(function(s) {
-                if (order.indexOf(s) === -1) {
-                    html += '<div class="stat-card total">' +
-                        '<div class="label">' + s + '</div>' +
-                        '<div class="number">' + counts[s] + '</div></div>';
+                // A expirar: planned_date > 7 days ago
+                if (r.planned_date && r.planned_date !== '-') {
+                    var parts = r.planned_date.split('/');
+                    if (parts.length === 3) {
+                        var collectDate = new Date(parts[2], parts[1] - 1, parts[0]);
+                        var diffDays = (now - collectDate) / (1000 * 60 * 60 * 24);
+                        if (diffDays > 7) expirar++;
+                    }
                 }
+
+                // Incompleto: sem motorista OU sem placa OU sem peso
+                var mot = r.motorista || '';
+                var pla = r.placa || '';
+                var peso = r.units_estimated || 0;
+                if (!mot || !pla || peso <= 0) incompleto++;
             });
 
-            document.getElementById('stat-cards').innerHTML = html;
+            document.getElementById('stat-pendente').textContent = pendente;
+            document.getElementById('stat-expirar').textContent = expirar;
+            document.getElementById('stat-incompleto').textContent = incompleto;
+            document.getElementById('stat-processando').textContent = processando;
+            document.getElementById('stat-falha').textContent = falha;
+            document.getElementById('stat-validado').textContent = validado;
         }
 
         function filterTable() {
             var fg = (document.getElementById('filter-gerador').value || '').toLowerCase();
             var ft = (document.getElementById('filter-transportador').value || '').toLowerCase();
-            var fs = document.getElementById('filter-status').value || '';
             var fm = (document.getElementById('filter-material').value || '').toLowerCase();
             var fo = document.getElementById('filter-orgao').value || '';
             var fn = (document.getElementById('filter-numero').value || '').toLowerCase();
+            var fmot = (document.getElementById('filter-motorista').value || '').toLowerCase();
+            var fpl = (document.getElementById('filter-placa').value || '').toLowerCase();
 
-            var filtered = allResults.filter(function(r) {
+            filteredResults = allResults.filter(function(r) {
                 if (fg && (r.generator_name || '').toLowerCase().indexOf(fg) === -1) return false;
                 if (ft && (r.hauler_name || '').toLowerCase().indexOf(ft) === -1) return false;
-                if (fs && r.collect_status !== fs) return false;
                 if (fm && (r.material_name || '').toLowerCase().indexOf(fm) === -1) return false;
                 if (fo && (r.issuer || '').toUpperCase().indexOf(fo) === -1) return false;
                 if (fn && (r.number || '').toLowerCase().indexOf(fn) === -1) return false;
+                if (fmot && (r.motorista || '').toLowerCase().indexOf(fmot) === -1) return false;
+                if (fpl && (r.placa || '').toLowerCase().indexOf(fpl) === -1) return false;
                 return true;
             });
 
+            renderTable();
+        }
+
+        function renderTable() {
             var tbody = document.getElementById('mtr-tbody');
-            if (filtered.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:40px; color:#aaa;">Nenhum MTR encontrado com os filtros aplicados</td></tr>';
+            if (filteredResults.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:40px; color:#aaa;">Nenhum MTR encontrado</td></tr>';
                 return;
             }
 
             var html = '';
-            for (var i = 0; i < filtered.length; i++) {
-                var r = filtered[i];
-                var statusCls = 'badge-' + (r.collect_status || 'outro').toLowerCase();
-                var numero = r.number && r.number !== '-' ? r.number : '<span class="text-placeholder">-</span>';
-                var motorista = '<span class="text-placeholder">sem motorista</span>';
-                var placa = '<span class="text-placeholder">sem placa</span>';
-                var peso = (r.units_estimated || 0);
+            for (var i = 0; i < filteredResults.length; i++) {
+                var r = filteredResults[i];
+                var cid = r.collect_id;
+                var isSelected = !!selectedIds[cid];
+                var numero = r.number && r.number !== '-' ? '<strong>' + esc(r.number) + '</strong>' : '<span style="color:#ccc;">-</span>';
+                var mot = r.motorista || '';
+                var pla = r.placa || '';
+                var peso = r.units_estimated || 0;
                 var pesoStr = peso > 0 ? peso.toLocaleString('pt-BR') + ' kg' : '-';
+                var motClass = mot ? '' : ' empty';
+                var plaClass = pla ? '' : ' empty';
+                var motDisplay = mot || 'sem motorista';
+                var plaDisplay = pla || 'sem placa';
+                var state = validationState[cid];
+                var statusBadge = '<span class="badge-status badge-emitido">Emitido</span>';
+                if (state === 'validado') statusBadge = '<span class="badge-status" style="background:#e8f8ef;color:#27ae60;">Validado</span>';
+                if (state === 'processando') statusBadge = '<span class="badge-status" style="background:#e8f0fe;color:#2980b9;">Processando</span>';
+                if (state === 'falha') statusBadge = '<span class="badge-status" style="background:#fdecea;color:#c0392b;">Falha</span>';
 
-                html += '<tr>' +
-                    '<td><strong>' + numero + '</strong></td>' +
-                    '<td>' + (r.issuer || '-') + '</td>' +
-                    '<td>' + (r.planned_date || '-') + '</td>' +
-                    '<td title="' + esc(r.generator_name) + '">' + trunc(r.generator_name, 30) + '</td>' +
-                    '<td title="' + esc(r.hauler_name) + '">' + trunc(r.hauler_name, 25) + '</td>' +
-                    '<td>' + motorista + '</td>' +
-                    '<td>' + placa + '</td>' +
-                    '<td>' + (r.material_name || '-') + '</td>' +
-                    '<td>' + (r.treatment || '-') + '</td>' +
+                html += '<tr class="' + (isSelected ? 'selected' : '') + '">' +
+                    '<td class="check-col"><input type="checkbox" ' + (isSelected ? 'checked' : '') + ' onchange="toggleRow(this, \'' + cid + '\')" /></td>' +
+                    '<td>' + esc(r.material_name || '-') + '</td>' +
+                    '<td>' + esc(r.planned_date || '-') + '</td>' +
+                    '<td>' + numero + '</td>' +
+                    '<td title="' + esc(r.generator_name) + '">' + trunc(r.generator_name, 25) + '</td>' +
+                    '<td title="' + esc(r.hauler_name) + '">' + trunc(r.hauler_name, 22) + '</td>' +
+                    '<td><div class="editable-cell' + motClass + '" onclick="startEdit(this, \'' + cid + '\', \'motorista\')">' + esc(motDisplay) + '</div></td>' +
+                    '<td><div class="editable-cell' + plaClass + '" onclick="startEdit(this, \'' + cid + '\', \'placa\')">' + esc(plaDisplay) + '</div></td>' +
+                    '<td>' + esc(r.treatment || '-') + '</td>' +
                     '<td class="text-end">' + pesoStr + '</td>' +
-                    '<td><span class="badge-status ' + statusCls + '">' + (r.collect_status || '-') + '</span></td>' +
+                    '<td>' + statusBadge + '</td>' +
                     '</tr>';
             }
             tbody.innerHTML = html;
         }
 
+        // === INLINE EDIT ===
+        function startEdit(cell, collectId, field) {
+            if (cell.querySelector('input')) return; // already editing
+            var current = '';
+            for (var i = 0; i < allResults.length; i++) {
+                if (allResults[i].collect_id === collectId) {
+                    current = allResults[i][field] || '';
+                    break;
+                }
+            }
+            var input = document.createElement('input');
+            input.type = 'text';
+            input.value = current;
+            if (field === 'placa') input.placeholder = 'ABC-1234';
+            else input.placeholder = 'Nome do motorista';
+            cell.innerHTML = '';
+            cell.appendChild(input);
+            input.focus();
+            input.addEventListener('blur', function() { saveEdit(cell, collectId, field, input.value); });
+            input.addEventListener('keypress', function(e) { if (e.key === 'Enter') input.blur(); });
+            input.addEventListener('keydown', function(e) { if (e.key === 'Escape') { renderTable(); } });
+        }
+
+        async function saveEdit(cell, collectId, field, value) {
+            value = value.trim();
+            // Update local data
+            for (var i = 0; i < allResults.length; i++) {
+                if (allResults[i].collect_id === collectId) {
+                    allResults[i][field] = value;
+                    break;
+                }
+            }
+            // Save to backend
+            try {
+                var body = {};
+                body[field] = value;
+                await fetch(API_BASE + '/coletas/' + collectId + '/metadata', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+            } catch (err) {
+                console.error('Erro ao salvar:', err);
+            }
+            updateStatCards();
+            renderTable();
+        }
+
+        // === SELECTION ===
+        function toggleRow(checkbox, collectId) {
+            if (checkbox.checked) {
+                selectedIds[collectId] = true;
+            } else {
+                delete selectedIds[collectId];
+            }
+            updateSelectionBar();
+            renderTable();
+        }
+
+        function toggleSelectAll(checkbox) {
+            if (checkbox.checked) {
+                filteredResults.forEach(function(r) { selectedIds[r.collect_id] = true; });
+            } else {
+                selectedIds = {};
+            }
+            updateSelectionBar();
+            renderTable();
+        }
+
+        function clearSelection() {
+            selectedIds = {};
+            document.getElementById('select-all').checked = false;
+            updateSelectionBar();
+            renderTable();
+        }
+
+        function updateSelectionBar() {
+            var count = Object.keys(selectedIds).length;
+            var bar = document.getElementById('selection-bar');
+            if (count > 0) {
+                bar.style.display = 'flex';
+                document.getElementById('selected-count').textContent = count;
+            } else {
+                bar.style.display = 'none';
+            }
+        }
+
+        function validateSelected() {
+            var ids = Object.keys(selectedIds);
+            if (ids.length === 0) return;
+            // Mark as processando
+            ids.forEach(function(id) { validationState[id] = 'processando'; });
+            clearSelection();
+            updateStatCards();
+            renderTable();
+            alert('Baixa massiva iniciada para ' + ids.length + ' MTR(s).\nEsta funcionalidade sera conectada ao SIGOR em breve.');
+            // TODO: connect to actual SIGOR validation API
+        }
+
+        // === HELPERS ===
         function trunc(str, len) {
             if (!str) return '-';
             return str.length > len ? str.substring(0, len) + '...' : str;
@@ -433,7 +578,7 @@
 
         function esc(str) {
             if (!str) return '';
-            return str.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
         }
 
         function updatePagination() {
@@ -452,12 +597,13 @@
         }
 
         function exportCSV() {
-            if (!allResults.length) return;
-            var headers = ['Numero MTR','Orgao','Data Coleta','Emissao','Gerador','Transportador','Material','Tratamento','Peso Estimado','Status','ID Coleta','CDF'];
+            var data = filteredResults.length > 0 ? filteredResults : allResults;
+            if (!data.length) return;
+            var headers = ['Residuo','Data Coleta','Numero MTR','Orgao','Gerador','Transportador','Motorista','Placa','Tratamento','Peso Estimado','Status','ID Coleta'];
             var csv = '\uFEFF' + headers.join(';') + '\n';
-            for (var i = 0; i < allResults.length; i++) {
-                var r = allResults[i];
-                var row = [r.number, r.issuer, r.planned_date, r.issued_at, r.generator_name, r.hauler_name, r.material_name, r.treatment, r.units_estimated, r.collect_status, r.collect_id, r.certificate];
+            for (var i = 0; i < data.length; i++) {
+                var r = data[i];
+                var row = [r.material_name, r.planned_date, r.number, r.issuer, r.generator_name, r.hauler_name, r.motorista || '', r.placa || '', r.treatment, r.units_estimated, r.collect_status, r.collect_id];
                 csv += row.map(function(v) { return '"' + String(v || '').replace(/"/g, '""') + '"'; }).join(';') + '\n';
             }
             var blob = new Blob([csv], {type: 'text/csv;charset=utf-8'});
