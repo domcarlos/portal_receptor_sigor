@@ -182,7 +182,7 @@
                 <div class="stat-cards">
                     <div class="stat-card pendente" title="Total de MTRs emitidos nao baixados"><div class="label"><i class="bi bi-clock"></i> Pend. Baixa</div><div class="number" id="stat-pendente">0</div></div>
                     <div class="stat-card expirar" title="Emitidos ha mais de 7 dias (* = desta pagina)"><div class="label"><i class="bi bi-exclamation-triangle"></i> A Expirar</div><div class="number" id="stat-expirar">0</div></div>
-                    <div class="stat-card incompleto" title="Sem motorista/placa/peso (* = desta pagina)"><div class="label"><i class="bi bi-pencil"></i> Incompletos</div><div class="number" id="stat-incompleto">0</div></div>
+                    <div class="stat-card incompleto" title="Sem motorista ou placa (* = desta pagina)"><div class="label"><i class="bi bi-pencil"></i> Incompletos</div><div class="number" id="stat-incompleto">0</div></div>
                     <div class="stat-card processando" title="Na fila de baixa massiva"><div class="label"><i class="bi bi-arrow-repeat"></i> Processando</div><div class="number" id="stat-processando">0</div></div>
                     <div class="stat-card falha" title="Falha na baixa"><div class="label"><i class="bi bi-x-circle"></i> Falha</div><div class="number" id="stat-falha">0</div></div>
                     <div class="stat-card validado" title="Baixados com sucesso"><div class="label"><i class="bi bi-check-circle"></i> Validados</div><div class="number" id="stat-validado">0</div></div>
@@ -374,8 +374,7 @@
             }
             var mot = r.motorista || '';
             var pla = r.placa || '';
-            var pc = r.peso_coletado || 0;
-            if (!mot || !pla || pc <= 0) incompleto++;
+            if (!mot || !pla) incompleto++;
         });
 
         // Pendente = total from API (all issued not yet received)
@@ -409,10 +408,10 @@
             if (fo && (r.issuer||'').toUpperCase().indexOf(fo) === -1) return false;
             if (fn && (r.number||'').toLowerCase().indexOf(fn) === -1) return false;
             if (fcomp === 'incompleto') {
-                if ((r.motorista||'') && (r.placa||'') && (r.peso_coletado||0) > 0) return false;
+                if ((r.motorista||'') && (r.placa||'')) return false;
             }
             if (fcomp === 'completo') {
-                if (!(r.motorista||'') || !(r.placa||'') || !((r.peso_coletado||0) > 0)) return false;
+                if (!(r.motorista||'') || !(r.placa||'')) return false;
             }
             return true;
         });
@@ -608,13 +607,12 @@
             var missing = [];
             if (!(r.motorista||'')) missing.push('motorista');
             if (!(r.placa||'')) missing.push('placa');
-            if (!((r.peso_coletado||0) > 0)) missing.push('peso coletado');
             if (missing.length > 0) incomplete.push({cid:cid, number:r.number, missing:missing});
             else ready.push(cid);
         });
 
         if (incomplete.length > 0 && ready.length === 0) {
-            toast('Todas as ' + incomplete.length + ' coleta(s) estao incompletas (faltam motorista/placa/peso). Complete os dados antes de validar.', 'error');
+            toast('Todas as ' + incomplete.length + ' coleta(s) estao incompletas (faltam motorista/placa). Complete os dados antes de validar.', 'error');
             return;
         }
 
