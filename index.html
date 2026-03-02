@@ -204,10 +204,16 @@
                     </div>
                 </div>
 
-                <!-- Loading more indicator -->
+                <!-- Loading more indicator with progress bar -->
                 <div id="loading-more" class="loading-more" style="display:none;">
-                    <span class="spinner-sm"></span> Carregando mais paginas...
-                    <span id="loading-progress"></span>
+                    <div style="display:flex; align-items:center; gap:12px; justify-content:center;">
+                        <span class="spinner-sm"></span>
+                        <span>Carregando MTRs em background...</span>
+                        <span id="loading-progress" style="font-weight:600; color:var(--musa-green);"></span>
+                    </div>
+                    <div style="margin-top:8px; background:#e9ecef; border-radius:4px; height:6px; max-width:400px; margin-left:auto; margin-right:auto; overflow:hidden;">
+                        <div id="progress-bar-fill" style="height:100%; background:var(--musa-green); border-radius:4px; width:0%; transition:width 0.3s;"></div>
+                    </div>
                 </div>
 
                 <!-- Table -->
@@ -304,47 +310,73 @@
         } catch(e) { hasCredentials = false; }
     }
 
-    // ========== LOAD ALL PAGES ==========
-    // Fetches all pages from API so big numbers reflect the TOTAL, not just one page
+    // ========== LOAD ALL PAGES (PROGRESSIVE) ==========
+    var totalApiPages = 1;
+    var pagesLoaded = 0;
+    var isLoadingMore = false;
+
     async function loadAllPages() {
         showState('loading');
         allEmitted = [];
+        pagesLoaded = 0;
         try {
-            // First page
-            var page = 1;
-            var pageSize = 200;
-            var data = await fetchPage(page, pageSize);
+            // 1) Load FIRST page and show IMMEDIATELY
+            var data = await fetchPage(1, 200);
             var totalCount = data.pagination ? data.pagination.count : 0;
-            var lastPage = data.pagination ? data.pagination.last_page : 1;
+            totalApiPages = data.pagination ? data.pagination.last_page : 1;
             addEmittedResults(data.results || []);
+            pagesLoaded = 1;
 
-            // Show content immediately with first page
+            // Show content right away with page 1 data
             showState('main-content');
             renderAll();
 
-            // Load remaining pages in background
-            if (lastPage > 1) {
+            // 2) Load remaining pages in background with PARALLEL batches
+            if (totalApiPages > 1) {
+                isLoadingMore = true;
+                updateProgressBar();
                 document.getElementById('loading-more').style.display = '';
-                for (var p = 2; p <= lastPage; p++) {
-                    document.getElementById('loading-progress').textContent = '(pagina ' + p + ' de ' + lastPage + ')';
-                    var d = await fetchPage(p, pageSize);
-                    addEmittedResults(d.results || []);
-                    renderAll(); // update stats and table progressively
-                }
-                document.getElementById('loading-more').style.display = 'none';
+                loadRemainingPages();
             }
         } catch(err) {
-            if (allEmitted.length > 0) {
-                // Partial load - show what we have
-                toast('Erro ao carregar paginas adicionais: ' + err.message, 'error');
-                document.getElementById('loading-more').style.display = 'none';
-                showState('main-content');
-                renderAll();
-            } else {
-                document.getElementById('error-message').textContent = err.message + '. O servidor pode estar iniciando (aguarde ~50s e tente novamente).';
-                showState('error-state');
-            }
+            document.getElementById('error-message').textContent = err.message + '. O servidor pode estar iniciando (aguarde ~50s e tente novamente).';
+            showState('error-state');
         }
+    }
+
+    async function loadRemainingPages() {
+        var BATCH_SIZE = 3; // fetch 3 pages in parallel
+        var remaining = [];
+        for (var p = 2; p <= totalApiPages; p++) remaining.push(p);
+
+        while (remaining.length > 0) {
+            var batch = remaining.splice(0, BATCH_SIZE);
+            var promises = batch.map(function(p) {
+                return fetchPage(p, 200).then(function(data) {
+                    addEmittedResults(data.results || []);
+                    pagesLoaded++;
+                    updateProgressBar();
+                    renderAll();
+                }).catch(function(err) {
+                    pagesLoaded++;
+                    updateProgressBar();
+                    console.error('Erro pagina ' + p + ':', err);
+                });
+            });
+            await Promise.all(promises);
+        }
+
+        isLoadingMore = false;
+        document.getElementById('loading-more').style.display = 'none';
+        toast('Todas as ' + totalApiPages + ' paginas carregadas (' + allEmitted.length + ' MTRs emitidos)', 'success');
+    }
+
+    function updateProgressBar() {
+        var pct = Math.round((pagesLoaded / totalApiPages) * 100);
+        var el = document.getElementById('loading-progress');
+        el.innerHTML = pagesLoaded + '/' + totalApiPages + ' paginas &mdash; ' + allEmitted.length + ' MTRs';
+        var bar = document.getElementById('progress-bar-fill');
+        if (bar) bar.style.width = pct + '%';
     }
 
     async function fetchPage(page, pageSize) {
@@ -357,7 +389,6 @@
 
     function addEmittedResults(results) {
         results.forEach(function(r) {
-            // Only emitted MTRs (have a number)
             if (r.number && r.number !== '-' && r.number.trim() !== '') {
                 allEmitted.push(r);
             }
@@ -367,7 +398,8 @@
     // ========== RENDER ==========
     function renderAll() {
         updateStatCards();
-        document.getElementById('total-loaded').textContent = allEmitted.length;
+        var loadingLabel = isLoadingMore ? ' <small style="color:#999; font-weight:400;">(carregando...)</small>' : '';
+        document.getElementById('total-loaded').innerHTML = allEmitted.length + loadingLabel;
         applyFilters();
         renderQueue();
     }
@@ -398,9 +430,10 @@
             if (!mot || !pla || pc <= 0) incompleto++;
         });
 
-        document.getElementById('stat-pendente').textContent = pendente;
-        document.getElementById('stat-expirar').textContent = expirar;
-        document.getElementById('stat-incompleto').textContent = incompleto;
+        var prefix = isLoadingMore ? '~' : '';
+        document.getElementById('stat-pendente').textContent = prefix + pendente;
+        document.getElementById('stat-expirar').textContent = prefix + expirar;
+        document.getElementById('stat-incompleto').textContent = prefix + incompleto;
         document.getElementById('stat-processando').textContent = processando;
         document.getElementById('stat-falha').textContent = falha;
         document.getElementById('stat-validado').textContent = validado;
