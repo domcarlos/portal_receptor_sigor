@@ -7,208 +7,288 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
     <style>
-        :root { --musa-green: #00a86b; --musa-dark: #1a1a2e; --musa-light: #f8f9fa; }
-        body { background: var(--musa-light); font-family: 'Segoe UI', system-ui, sans-serif; }
-        .navbar-brand { font-weight: 700; }
-        .navbar-brand span { color: var(--musa-green); }
-        .stat-card { border: none; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-        .stat-card .stat-number { font-size: 2rem; font-weight: 700; }
-        .stat-card .stat-label { font-size: 0.85rem; color: #6c757d; }
-        .table-container { border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); background: white; }
-        .table th { background: var(--musa-dark); color: white; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.5px; position: sticky; top: 0; z-index: 1; }
-        .table td { font-size: 0.83rem; vertical-align: middle; }
-        .badge-incompleto { background: #fff3cd; color: #856404; }
-        .badge-completo { background: #d1e7dd; color: #0f5132; }
-        .badge-cancelado { background: #f8d7da; color: #842029; }
-        .receptor-header { background: linear-gradient(135deg, var(--musa-dark), #16213e); color: white; border-radius: 12px; }
-        .search-box { border-radius: 8px; border: 2px solid #e9ecef; }
-        .search-box:focus { border-color: var(--musa-green); box-shadow: 0 0 0 0.2rem rgba(0,168,107,0.15); }
-        .btn-musa { background: var(--musa-green); color: white; border: none; border-radius: 8px; }
-        .btn-musa:hover { background: #009060; color: white; }
-        .loading-spinner { display: inline-block; width: 3rem; height: 3rem; border: 3px solid #e9ecef; border-radius: 50%; border-top-color: var(--musa-green); animation: spin 0.8s linear infinite; }
+        :root { --musa-green: #00a86b; --musa-dark: #1a1a2e; --sidebar-w: 220px; }
+        * { box-sizing: border-box; }
+        body { margin: 0; font-family: 'Segoe UI', system-ui, sans-serif; background: #f5f5f5; }
+
+        /* Sidebar */
+        .sidebar { position: fixed; top: 0; left: 0; width: var(--sidebar-w); height: 100vh; background: white; border-right: 1px solid #e9ecef; padding: 20px 0; z-index: 10; display: flex; flex-direction: column; }
+        .sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid #e9ecef; }
+        .sidebar-logo h5 { margin: 0; font-weight: 700; color: var(--musa-dark); }
+        .sidebar-logo small { color: #6c757d; font-size: 0.75rem; }
+        .sidebar-nav { padding: 12px 10px; flex: 1; }
+        .sidebar-nav a { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 8px; color: #495057; text-decoration: none; font-size: 0.9rem; margin-bottom: 4px; transition: all 0.15s; }
+        .sidebar-nav a:hover { background: #f0f0f0; }
+        .sidebar-nav a.active { background: var(--musa-green); color: white; font-weight: 600; }
+        .sidebar-user { padding: 12px 20px; border-top: 1px solid #e9ecef; display: flex; align-items: center; gap: 10px; }
+        .sidebar-user .avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--musa-green); color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.8rem; }
+        .sidebar-user .user-info { font-size: 0.8rem; }
+        .sidebar-user .user-info div:first-child { font-weight: 600; color: #333; }
+        .sidebar-user .user-info div:last-child { color: #6c757d; }
+
+        /* Main */
+        .main { margin-left: var(--sidebar-w); min-height: 100vh; }
+        .main-header { background: white; border-bottom: 1px solid #e9ecef; padding: 20px 30px; }
+        .main-header h4 { margin: 0 0 4px; font-weight: 700; color: var(--musa-dark); }
+        .main-header p { margin: 0; color: #6c757d; font-size: 0.9rem; }
+        .main-body { padding: 24px 30px; }
+
+        /* Filters */
+        .filters-card { background: white; border-radius: 10px; border: 1px solid #e9ecef; padding: 16px 20px; margin-bottom: 20px; }
+        .filters-toggle { cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: 600; color: #495057; font-size: 0.9rem; }
+        .filters-body { margin-top: 12px; }
+        .filters-body label { font-size: 0.8rem; color: #6c757d; margin-bottom: 4px; font-weight: 500; }
+        .filters-body .form-control, .filters-body .form-select { font-size: 0.85rem; border-radius: 6px; }
+
+        /* Stat cards */
+        .stat-cards { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+        .stat-card { flex: 1; min-width: 120px; background: white; border-radius: 10px; border: 1px solid #e9ecef; padding: 14px 18px; }
+        .stat-card .label { font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 4px; }
+        .stat-card .number { font-size: 1.8rem; font-weight: 700; color: #333; }
+        .stat-card.pendente .label { color: #e67e22; }
+        .stat-card.pendente { border-left: 3px solid #e67e22; }
+        .stat-card.incompleto .label { color: #e74c3c; }
+        .stat-card.incompleto { border-left: 3px solid #e74c3c; }
+        .stat-card.completo .label { color: #27ae60; }
+        .stat-card.completo { border-left: 3px solid #27ae60; }
+        .stat-card.cancelado .label { color: #95a5a6; }
+        .stat-card.cancelado { border-left: 3px solid #95a5a6; }
+        .stat-card.validado .label { color: #2980b9; }
+        .stat-card.validado { border-left: 3px solid #2980b9; }
+        .stat-card.total .label { color: #495057; }
+        .stat-card.total { border-left: 3px solid #495057; }
+
+        /* Table */
+        .table-card { background: white; border-radius: 10px; border: 1px solid #e9ecef; overflow: hidden; }
+        .table-header { padding: 14px 20px; border-bottom: 1px solid #e9ecef; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .table-header .total-info { font-size: 0.9rem; color: #495057; }
+        .table-header .total-info strong { color: #333; }
+        .btn-export { background: white; border: 1px solid #dee2e6; color: #495057; border-radius: 6px; font-size: 0.85rem; padding: 6px 14px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+        .btn-export:hover { background: #f8f9fa; }
+        .table-scroll { overflow-x: auto; max-height: 550px; overflow-y: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        table thead th { background: #fafafa; color: #6c757d; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; padding: 10px 12px; border-bottom: 2px solid #e9ecef; position: sticky; top: 0; z-index: 1; white-space: nowrap; }
+        table tbody td { padding: 10px 12px; font-size: 0.83rem; border-bottom: 1px solid #f0f0f0; color: #333; vertical-align: middle; }
+        table tbody tr:hover { background: #f8fffe; }
+
+        /* Status badges */
+        .badge-status { font-size: 0.72rem; padding: 3px 10px; border-radius: 20px; font-weight: 600; white-space: nowrap; }
+        .badge-pendente { background: #fef3e2; color: #e67e22; }
+        .badge-incompleto { background: #fdecea; color: #e74c3c; }
+        .badge-completo { background: #e8f8ef; color: #27ae60; }
+        .badge-cancelado { background: #f0f0f0; color: #95a5a6; }
+        .badge-validado, .badge-validados { background: #e8f0fe; color: #2980b9; }
+        .badge-emitido { background: #e8f8ef; color: #27ae60; }
+        .badge-recebido { background: #e8f0fe; color: #2980b9; }
+
+        .text-placeholder { color: #ccc; font-style: italic; font-size: 0.8rem; }
+
+        /* Pagination */
+        .table-footer { padding: 12px 20px; border-top: 1px solid #e9ecef; display: flex; justify-content: space-between; align-items: center; }
+        .table-footer .info { font-size: 0.82rem; color: #6c757d; }
+        .btn-page { border: 1px solid #dee2e6; background: white; color: #495057; padding: 5px 12px; border-radius: 6px; font-size: 0.82rem; cursor: pointer; }
+        .btn-page:hover { background: #f8f9fa; }
+        .btn-page:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-page.active { background: var(--musa-green); color: white; border-color: var(--musa-green); }
+
+        /* Loading */
+        .loading { text-align: center; padding: 80px 20px; }
+        .spinner { width: 40px; height: 40px; border: 3px solid #e9ecef; border-top-color: var(--musa-green); border-radius: 50%; animation: spin 0.7s linear infinite; margin: 0 auto 16px; }
         @keyframes spin { to { transform: rotate(360deg); } }
-        .filter-section { background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+
+        /* Empty */
         .empty-state { text-align: center; padding: 60px 20px; }
-        .empty-state i { font-size: 4rem; color: #dee2e6; }
-        .table-wrapper { max-height: 600px; overflow-y: auto; }
-        .issuer-sigor { background: #e8f5e9; color: #2e7d32; font-size: 0.7rem; padding: 2px 8px; border-radius: 12px; }
-        .issuer-sinir { background: #e3f2fd; color: #1565c0; font-size: 0.7rem; padding: 2px 8px; border-radius: 12px; }
-        .pagination-btn { border-radius: 8px; }
+        .empty-state i { font-size: 3rem; color: #dee2e6; display: block; margin-bottom: 12px; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+            .main { margin-left: 0; }
+            .main-body { padding: 16px; }
+            .stat-cards { gap: 8px; }
+            .stat-card { min-width: 90px; padding: 10px; }
+            .stat-card .number { font-size: 1.4rem; }
+        }
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-dark" style="background:var(--musa-dark);">
-        <div class="container">
-            <a class="navbar-brand" href="#"><i class="bi bi-recycle me-2"></i>Portal do <span>Receptor</span></a>
-            <span class="text-white-50 small">SIGOR | Musa</span>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-logo">
+            <h5>musa</h5>
+            <small>Receptor</small>
         </div>
-    </nav>
+        <div class="sidebar-nav">
+            <a href="#" id="nav-credenciais"><i class="bi bi-key"></i> Credenciais</a>
+            <a href="#" id="nav-mtrs" class="active"><i class="bi bi-file-earmark-text"></i> MTRs</a>
+        </div>
+        <div class="sidebar-user">
+            <div class="avatar">RC</div>
+            <div class="user-info">
+                <div>Receptor</div>
+                <div>receptor@musa.co</div>
+            </div>
+        </div>
+    </div>
 
-    <div class="container py-4">
-        <!-- Loading -->
-        <div id="loading" class="text-center py-5" style="display:none;">
-            <div class="loading-spinner mb-3"></div>
-            <p class="text-muted">Carregando MTRs...</p>
+    <!-- Main -->
+    <div class="main">
+        <div class="main-header">
+            <h4>Manifestos de Transporte (MTRs)</h4>
+            <p>Visualize e gerencie os manifestos de transporte de residuos</p>
         </div>
 
-        <!-- No receptor -->
-        <div id="no-receptor" class="empty-state" style="display:none;">
-            <i class="bi bi-search mb-3 d-block"></i>
-            <h4>Nenhum receptor selecionado</h4>
-            <p class="text-muted mb-4">Informe o nome do receptor para visualizar os MTRs</p>
-            <div class="row justify-content-center">
-                <div class="col-md-6">
+        <div class="main-body">
+            <!-- Loading -->
+            <div id="loading" class="loading" style="display:none;">
+                <div class="spinner"></div>
+                <p style="color:#6c757d;">Carregando MTRs...</p>
+            </div>
+
+            <!-- No receptor -->
+            <div id="no-receptor" class="empty-state" style="display:none;">
+                <i class="bi bi-search"></i>
+                <h5>Nenhum receptor selecionado</h5>
+                <p style="color:#6c757d; margin-bottom:20px;">Informe o nome do receptor na URL: <code>?receptor=NOME</code></p>
+                <div style="max-width:400px; margin:0 auto;">
                     <div class="input-group">
-                        <input type="text" id="receptor-input" class="form-control search-box" placeholder="Nome do receptor...">
-                        <button class="btn btn-musa" onclick="searchReceptor()"><i class="bi bi-search"></i> Buscar</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Error -->
-        <div id="error-state" class="empty-state" style="display:none;">
-            <i class="bi bi-exclamation-triangle mb-3 d-block" style="color:#ffc107;"></i>
-            <h4>Erro ao carregar dados</h4>
-            <p class="text-muted" id="error-message"></p>
-            <button class="btn btn-musa" onclick="loadData()"><i class="bi bi-arrow-clockwise"></i> Tentar novamente</button>
-        </div>
-
-        <!-- Main content -->
-        <div id="main-content" style="display:none;">
-            <!-- Header -->
-            <div class="receptor-header p-4 mb-4">
-                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                    <div>
-                        <h4 class="mb-1"><i class="bi bi-building me-2"></i><span id="receptor-name"></span></h4>
-                        <span class="text-white-50 small">Dados em tempo real do MTR Manager</span>
-                    </div>
-                    <span class="badge bg-light text-dark fs-6" id="total-badge">0 MTRs</span>
-                </div>
-            </div>
-
-            <!-- Stats -->
-            <div class="row g-3 mb-4">
-                <div class="col-6 col-md-3">
-                    <div class="card stat-card p-3">
-                        <div class="stat-number text-primary" id="stat-total">0</div>
-                        <div class="stat-label">Total MTRs</div>
-                    </div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div class="card stat-card p-3">
-                        <div class="stat-number text-warning" id="stat-incompleto">0</div>
-                        <div class="stat-label">Incompletos</div>
-                    </div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div class="card stat-card p-3">
-                        <div class="stat-number text-success" id="stat-completo">0</div>
-                        <div class="stat-label">Completos</div>
-                    </div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div class="card stat-card p-3">
-                        <div class="stat-number text-info" id="stat-peso">0</div>
-                        <div class="stat-label">Peso Total (ton)</div>
+                        <input type="text" id="receptor-input" class="form-control" placeholder="Nome do receptor...">
+                        <button class="btn" style="background:var(--musa-green); color:white;" onclick="searchReceptor()"><i class="bi bi-search"></i> Buscar</button>
                     </div>
                 </div>
             </div>
 
-            <!-- Filters -->
-            <div class="filter-section p-3 mb-4">
-                <div class="row g-2 align-items-end">
-                    <div class="col-md-3">
-                        <label class="form-label small text-muted mb-1">Gerador</label>
-                        <input type="text" class="form-control form-control-sm search-box" id="filter-gerador" placeholder="Filtrar gerador..." oninput="filterTable()">
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label small text-muted mb-1">Status</label>
-                        <select class="form-select form-select-sm search-box" id="filter-status" onchange="filterTable()">
-                            <option value="">Todos</option>
-                            <option value="Incompleto">Incompleto</option>
-                            <option value="Completo">Completo</option>
-                            <option value="Cancelado">Cancelado</option>
-                        </select>
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label small text-muted mb-1">Material</label>
-                        <input type="text" class="form-control form-control-sm search-box" id="filter-material" placeholder="Material..." oninput="filterTable()">
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label small text-muted mb-1">Orgao</label>
-                        <select class="form-select form-select-sm search-box" id="filter-orgao" onchange="filterTable()">
-                            <option value="">Todos</option>
-                            <option value="SIGOR">SIGOR</option>
-                            <option value="SINIR">SINIR</option>
-                        </select>
-                    </div>
-                    <div class="col-md-1">
-                        <label class="form-label small text-muted mb-1">Itens</label>
-                        <select class="form-select form-select-sm search-box" id="page-size" onchange="changePageSize()">
-                            <option value="25">25</option>
-                            <option value="50">50</option>
-                            <option value="100" selected>100</option>
-                        </select>
-                    </div>
-                    <div class="col-md-2 text-end">
-                        <button class="btn btn-sm btn-outline-secondary" onclick="exportCSV()" title="Exportar CSV"><i class="bi bi-download"></i> CSV</button>
-                        <button class="btn btn-sm btn-outline-secondary ms-1" onclick="clearFilters()" title="Limpar filtros"><i class="bi bi-x-circle"></i></button>
-                    </div>
-                </div>
+            <!-- Error -->
+            <div id="error-state" class="empty-state" style="display:none;">
+                <i class="bi bi-exclamation-triangle" style="color:#ffc107;"></i>
+                <h5>Erro ao carregar dados</h5>
+                <p style="color:#6c757d;" id="error-message"></p>
+                <button class="btn" style="background:var(--musa-green); color:white;" onclick="loadData()"><i class="bi bi-arrow-clockwise"></i> Tentar novamente</button>
             </div>
 
-            <!-- Table -->
-            <div class="table-container">
-                <div class="table-wrapper">
-                    <table class="table table-hover table-sm mb-0" id="mtr-table">
-                        <thead>
-                            <tr>
-                                <th>#</th>
-                                <th>Orgao</th>
-                                <th>Data Coleta</th>
-                                <th>Gerador</th>
-                                <th>Transportador</th>
-                                <th>Material</th>
-                                <th>Tratamento</th>
-                                <th class="text-end">Peso (t)</th>
-                                <th>Status</th>
-                                <th>Numero</th>
-                            </tr>
-                        </thead>
-                        <tbody id="mtr-tbody"></tbody>
-                    </table>
+            <!-- Content -->
+            <div id="main-content" style="display:none;">
+
+                <!-- Filters -->
+                <div class="filters-card">
+                    <div class="filters-toggle" onclick="toggleFilters()">
+                        <i class="bi bi-funnel"></i> Filtros <i class="bi bi-chevron-down" id="filter-chevron" style="font-size:0.7rem;"></i>
+                    </div>
+                    <div class="filters-body" id="filters-body">
+                        <div class="row g-2 mt-1">
+                            <div class="col-md-3">
+                                <label>Receptor</label>
+                                <input type="text" class="form-control form-control-sm" id="filter-receptor" readonly>
+                            </div>
+                            <div class="col-md-2">
+                                <label>Orgao Emissor</label>
+                                <select class="form-select form-select-sm" id="filter-orgao" onchange="filterTable()">
+                                    <option value="">Todos</option>
+                                    <option value="SIGOR">SIGOR - SP</option>
+                                    <option value="SINIR">SINIR</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label>Status</label>
+                                <select class="form-select form-select-sm" id="filter-status" onchange="filterTable()">
+                                    <option value="">Todos</option>
+                                    <option value="Pendente">Pendente</option>
+                                    <option value="Incompleto">Incompleto</option>
+                                    <option value="Completo">Completo</option>
+                                    <option value="Cancelado">Cancelado</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label>Numero MTR</label>
+                                <input type="text" class="form-control form-control-sm" id="filter-numero" placeholder="Ex: 260010502572" oninput="filterTable()">
+                            </div>
+                            <div class="col-md-3">
+                                <label>Gerador</label>
+                                <input type="text" class="form-control form-control-sm" id="filter-gerador" placeholder="Nome do gerador" oninput="filterTable()">
+                            </div>
+                            <div class="col-md-3">
+                                <label>Transportador</label>
+                                <input type="text" class="form-control form-control-sm" id="filter-transportador" placeholder="Nome do transportador" oninput="filterTable()">
+                            </div>
+                            <div class="col-md-2">
+                                <label>Data Coleta (De)</label>
+                                <input type="date" class="form-control form-control-sm" id="filter-date-from" onchange="filterTable()">
+                            </div>
+                            <div class="col-md-2">
+                                <label>Data Coleta (Ate)</label>
+                                <input type="date" class="form-control form-control-sm" id="filter-date-to" onchange="filterTable()">
+                            </div>
+                            <div class="col-md-2">
+                                <label>Material / Residuo</label>
+                                <input type="text" class="form-control form-control-sm" id="filter-material" placeholder="Reciclavel, Rejeito..." oninput="filterTable()">
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="d-flex justify-content-between align-items-center p-3 border-top">
-                    <span class="small text-muted" id="pagination-info"></span>
-                    <div>
-                        <button class="btn btn-sm btn-outline-secondary pagination-btn me-1" id="btn-prev" onclick="changePage(-1)"><i class="bi bi-chevron-left"></i> Anterior</button>
-                        <button class="btn btn-sm btn-musa pagination-btn" id="btn-next" onclick="changePage(1)">Proxima <i class="bi bi-chevron-right"></i></button>
+
+                <!-- Stat cards -->
+                <div class="stat-cards" id="stat-cards"></div>
+
+                <!-- Table -->
+                <div class="table-card">
+                    <div class="table-header">
+                        <div class="total-info">Total de MTRs: <strong id="total-count">0</strong></div>
+                        <div style="display:flex; gap:8px;">
+                            <button class="btn-export" onclick="exportCSV()"><i class="bi bi-download"></i> Exportar CSV</button>
+                        </div>
+                    </div>
+                    <div class="table-scroll">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Numero MTR</th>
+                                    <th>Orgao</th>
+                                    <th>Data Coleta</th>
+                                    <th>Gerador</th>
+                                    <th>Transportador</th>
+                                    <th>Motorista</th>
+                                    <th>Placa</th>
+                                    <th>Material</th>
+                                    <th>Tratamento</th>
+                                    <th class="text-end">Peso Est.</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="mtr-tbody"></tbody>
+                        </table>
+                    </div>
+                    <div class="table-footer">
+                        <div class="info" id="pagination-info">-</div>
+                        <div style="display:flex; gap:6px;">
+                            <button class="btn-page" id="btn-prev" onclick="changePage(-1)"><i class="bi bi-chevron-left"></i></button>
+                            <span class="btn-page active" id="page-number">1</span>
+                            <button class="btn-page" id="btn-next" onclick="changePage(1)"><i class="bi bi-chevron-right"></i></button>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <footer class="text-center py-3 text-muted small">Portal do Receptor &copy; 2026 - Musa Tecnologia</footer>
-
     <script>
-        const API_BASE = 'https://portal-receptor-sigor.onrender.com/api';
-        let allResults = [];
-        let currentPage = 1;
-        let totalCount = 0;
-        let lastPage = 1;
-        let receptorName = '';
+        var API_BASE = 'https://portal-receptor-sigor.onrender.com/api';
+        var allResults = [];
+        var currentPage = 1;
+        var totalCount = 0;
+        var lastPage = 1;
+        var pageSize = 100;
+        var receptorName = '';
 
         function init() {
-            const params = new URLSearchParams(window.location.search);
+            var params = new URLSearchParams(window.location.search);
             receptorName = params.get('receptor') || '';
             if (receptorName) {
+                document.getElementById('filter-receptor').value = receptorName;
                 loadData();
             } else {
                 showState('no-receptor');
             }
-            const input = document.getElementById('receptor-input');
+            var input = document.getElementById('receptor-input');
             if (input) input.addEventListener('keypress', function(e) { if (e.key === 'Enter') searchReceptor(); });
         }
 
@@ -225,96 +305,138 @@
             window.location.href = '?receptor=' + encodeURIComponent(val);
         }
 
+        function toggleFilters() {
+            var body = document.getElementById('filters-body');
+            var chev = document.getElementById('filter-chevron');
+            if (body.style.display === 'none') {
+                body.style.display = '';
+                chev.className = 'bi bi-chevron-down';
+            } else {
+                body.style.display = 'none';
+                chev.className = 'bi bi-chevron-right';
+            }
+        }
+
         async function loadData() {
             showState('loading');
-            var pageSize = document.getElementById('page-size') ? document.getElementById('page-size').value : 100;
-
             try {
                 var url = API_BASE + '/mtrs?receiver_name=' + encodeURIComponent(receptorName) + '&page_size=' + pageSize;
                 var resp = await fetch(url);
                 if (!resp.ok) throw new Error('HTTP ' + resp.status);
                 var data = await resp.json();
-
                 allResults = data.results || [];
                 totalCount = data.pagination ? data.pagination.count : 0;
                 lastPage = data.pagination ? data.pagination.last_page : 1;
                 currentPage = data.pagination ? data.pagination.page : 1;
-
-                renderContent();
+                renderAll();
                 showState('main-content');
             } catch (err) {
-                document.getElementById('error-message').textContent = err.message + '. O servidor pode estar iniciando (aguarde 30s e tente de novo).';
+                document.getElementById('error-message').textContent = err.message + '. O servidor pode estar iniciando (aguarde 30s e tente novamente).';
                 showState('error-state');
             }
         }
 
-        function renderContent() {
-            document.getElementById('receptor-name').textContent = receptorName;
-            document.getElementById('total-badge').textContent = totalCount.toLocaleString('pt-BR') + ' MTRs';
-
-            var incompletos = allResults.filter(function(r) { return r.collect_status === 'Incompleto'; }).length;
-            var completos = allResults.filter(function(r) { return r.collect_status === 'Completo'; }).length;
-            var pesoTotal = allResults.reduce(function(sum, r) { return sum + (r.units_estimated || 0); }, 0);
-
-            document.getElementById('stat-total').textContent = totalCount.toLocaleString('pt-BR');
-            document.getElementById('stat-incompleto').textContent = incompletos;
-            document.getElementById('stat-completo').textContent = completos;
-            document.getElementById('stat-peso').textContent = pesoTotal.toLocaleString('pt-BR', {maximumFractionDigits: 1});
-
+        function renderAll() {
+            renderStatCards();
+            document.getElementById('total-count').textContent = totalCount.toLocaleString('pt-BR');
+            document.getElementById('page-number').textContent = currentPage;
             filterTable();
             updatePagination();
         }
 
+        function renderStatCards() {
+            var counts = {};
+            allResults.forEach(function(r) {
+                var s = r.collect_status || 'Outro';
+                counts[s] = (counts[s] || 0) + 1;
+            });
+
+            var order = ['Pendente', 'Incompleto', 'Completo', 'Cancelado'];
+            var html = '';
+
+            // Add each status card
+            order.forEach(function(status) {
+                var count = counts[status] || 0;
+                var cls = status.toLowerCase();
+                html += '<div class="stat-card ' + cls + '">' +
+                    '<div class="label">' + status + '</div>' +
+                    '<div class="number">' + count + '</div></div>';
+            });
+
+            // Any other statuses
+            Object.keys(counts).forEach(function(s) {
+                if (order.indexOf(s) === -1) {
+                    html += '<div class="stat-card total">' +
+                        '<div class="label">' + s + '</div>' +
+                        '<div class="number">' + counts[s] + '</div></div>';
+                }
+            });
+
+            document.getElementById('stat-cards').innerHTML = html;
+        }
+
         function filterTable() {
-            var fg = (document.getElementById('filter-gerador') ? document.getElementById('filter-gerador').value : '').toLowerCase();
-            var fs = document.getElementById('filter-status') ? document.getElementById('filter-status').value : '';
-            var fm = (document.getElementById('filter-material') ? document.getElementById('filter-material').value : '').toLowerCase();
-            var fo = document.getElementById('filter-orgao') ? document.getElementById('filter-orgao').value : '';
+            var fg = (document.getElementById('filter-gerador').value || '').toLowerCase();
+            var ft = (document.getElementById('filter-transportador').value || '').toLowerCase();
+            var fs = document.getElementById('filter-status').value || '';
+            var fm = (document.getElementById('filter-material').value || '').toLowerCase();
+            var fo = document.getElementById('filter-orgao').value || '';
+            var fn = (document.getElementById('filter-numero').value || '').toLowerCase();
 
             var filtered = allResults.filter(function(r) {
                 if (fg && (r.generator_name || '').toLowerCase().indexOf(fg) === -1) return false;
+                if (ft && (r.hauler_name || '').toLowerCase().indexOf(ft) === -1) return false;
                 if (fs && r.collect_status !== fs) return false;
                 if (fm && (r.material_name || '').toLowerCase().indexOf(fm) === -1) return false;
                 if (fo && (r.issuer || '').toUpperCase().indexOf(fo) === -1) return false;
+                if (fn && (r.number || '').toLowerCase().indexOf(fn) === -1) return false;
                 return true;
             });
 
             var tbody = document.getElementById('mtr-tbody');
             if (filtered.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-muted">Nenhum MTR encontrado</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:40px; color:#aaa;">Nenhum MTR encontrado com os filtros aplicados</td></tr>';
                 return;
             }
 
             var html = '';
             for (var i = 0; i < filtered.length; i++) {
                 var r = filtered[i];
-                var issuerClass = (r.issuer || '').indexOf('SIGOR') >= 0 ? 'issuer-sigor' : 'issuer-sinir';
-                var statusClass = r.collect_status === 'Incompleto' ? 'badge-incompleto' :
-                                  r.collect_status === 'Completo' ? 'badge-completo' :
-                                  r.collect_status === 'Cancelado' ? 'badge-cancelado' : 'bg-secondary text-white';
+                var statusCls = 'badge-' + (r.collect_status || 'outro').toLowerCase();
+                var numero = r.number && r.number !== '-' ? r.number : '<span class="text-placeholder">-</span>';
+                var motorista = '<span class="text-placeholder">sem motorista</span>';
+                var placa = '<span class="text-placeholder">sem placa</span>';
+                var peso = (r.units_estimated || 0);
+                var pesoStr = peso > 0 ? peso.toLocaleString('pt-BR') + ' kg' : '-';
+
                 html += '<tr>' +
-                    '<td class="text-muted">' + (i + 1) + '</td>' +
-                    '<td><span class="' + issuerClass + '">' + (r.issuer || '-') + '</span></td>' +
+                    '<td><strong>' + numero + '</strong></td>' +
+                    '<td>' + (r.issuer || '-') + '</td>' +
                     '<td>' + (r.planned_date || '-') + '</td>' +
-                    '<td title="' + (r.generator_name || '') + '">' + truncate(r.generator_name, 35) + '</td>' +
-                    '<td title="' + (r.hauler_name || '') + '">' + truncate(r.hauler_name, 25) + '</td>' +
+                    '<td title="' + esc(r.generator_name) + '">' + trunc(r.generator_name, 30) + '</td>' +
+                    '<td title="' + esc(r.hauler_name) + '">' + trunc(r.hauler_name, 25) + '</td>' +
+                    '<td>' + motorista + '</td>' +
+                    '<td>' + placa + '</td>' +
                     '<td>' + (r.material_name || '-') + '</td>' +
                     '<td>' + (r.treatment || '-') + '</td>' +
-                    '<td class="text-end">' + (r.units_estimated || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2}) + '</td>' +
-                    '<td><span class="badge ' + statusClass + '">' + (r.collect_status || '-') + '</span></td>' +
-                    '<td class="text-muted small">' + (r.number || '-') + '</td>' +
+                    '<td class="text-end">' + pesoStr + '</td>' +
+                    '<td><span class="badge-status ' + statusCls + '">' + (r.collect_status || '-') + '</span></td>' +
                     '</tr>';
             }
             tbody.innerHTML = html;
         }
 
-        function truncate(str, len) {
+        function trunc(str, len) {
             if (!str) return '-';
             return str.length > len ? str.substring(0, len) + '...' : str;
         }
 
+        function esc(str) {
+            if (!str) return '';
+            return str.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+
         function updatePagination() {
-            var pageSize = parseInt(document.getElementById('page-size') ? document.getElementById('page-size').value : 100);
             var start = (currentPage - 1) * pageSize + 1;
             var end = Math.min(currentPage * pageSize, totalCount);
             document.getElementById('pagination-info').textContent = 'Mostrando ' + start + '-' + end + ' de ' + totalCount.toLocaleString('pt-BR');
@@ -329,26 +451,13 @@
             loadData();
         }
 
-        function changePageSize() {
-            currentPage = 1;
-            loadData();
-        }
-
-        function clearFilters() {
-            document.getElementById('filter-gerador').value = '';
-            document.getElementById('filter-status').value = '';
-            document.getElementById('filter-material').value = '';
-            document.getElementById('filter-orgao').value = '';
-            filterTable();
-        }
-
         function exportCSV() {
             if (!allResults.length) return;
-            var headers = ['Orgao', 'Data Coleta', 'Gerador', 'Transportador', 'Material', 'Tratamento', 'Peso', 'Status', 'Numero', 'ID Coleta'];
+            var headers = ['Numero MTR','Orgao','Data Coleta','Emissao','Gerador','Transportador','Material','Tratamento','Peso Estimado','Status','ID Coleta','CDF'];
             var csv = '\uFEFF' + headers.join(';') + '\n';
             for (var i = 0; i < allResults.length; i++) {
                 var r = allResults[i];
-                var row = [r.issuer, r.planned_date, r.generator_name, r.hauler_name, r.material_name, r.treatment, r.units_estimated, r.collect_status, r.number, r.collect_id];
+                var row = [r.number, r.issuer, r.planned_date, r.issued_at, r.generator_name, r.hauler_name, r.material_name, r.treatment, r.units_estimated, r.collect_status, r.collect_id, r.certificate];
                 csv += row.map(function(v) { return '"' + String(v || '').replace(/"/g, '""') + '"'; }).join(';') + '\n';
             }
             var blob = new Blob([csv], {type: 'text/csv;charset=utf-8'});
