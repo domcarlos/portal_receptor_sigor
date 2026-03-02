@@ -7,7 +7,6 @@ import os
 import logging
 
 from app.routes import router
-from app.mtr_routes import mtr_router
 from app.database import init_db
 
 load_dotenv()
@@ -23,23 +22,26 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Portal do Receptor API",
     description="Backend para validacao em lote de MTRs no SIGOR",
-    version="0.2.0",
+    version="0.3.0",
     lifespan=lifespan,
 )
 
-origins = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:5173").split(",")
+# CORS - include GitHub Pages domain
+origins = os.getenv(
+    "CORS_ORIGINS",
+    "http://localhost:3000,http://localhost:5173,https://domcarlos.github.io"
+).split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 app.include_router(router, prefix="/api")
-app.include_router(mtr_router, prefix="/api")
 
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "service": "portal-receptor"}
+    return {"status": "ok", "service": "portal-receptor", "version": "0.3.0"}
