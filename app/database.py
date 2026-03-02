@@ -50,6 +50,16 @@ async def init_db():
             updated_at TEXT NOT NULL
         )
     """)
+    await db.execute("""
+        CREATE TABLE IF NOT EXISTS validation_jobs (
+            collect_id TEXT PRIMARY KEY,
+            mtr_number TEXT DEFAULT '',
+            state TEXT DEFAULT 'processando',
+            message TEXT DEFAULT '',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+    """)
     # Migration: add peso_coletado column if table existed before this update
     try:
         await db.execute("ALTER TABLE collection_metadata ADD COLUMN peso_coletado REAL DEFAULT 0")
@@ -164,3 +174,28 @@ async def upsert_collection_metadata(collect_id: str, data: dict):
     )
     row = await cursor2.fetchone()
     return dict(row) if row else None
+
+
+# === STATS ===
+
+async def count_completos():
+    """Count collection_metadata records that have BOTH motorista and placa filled."""
+    db = await get_db()
+    cursor = await db.execute(
+        "SELECT COUNT(*) as cnt FROM collection_metadata WHERE motorista != '' AND placa != ''"
+    )
+    row = await cursor.fetchone()
+    return row["cnt"] if row else 0
+
+
+async def count_validation_jobs():
+    """Count validation jobs by state."""
+    db = await get_db()
+    cursor = await db.execute(
+        "SELECT state, COUNT(*) as cnt FROM validation_jobs GROUP BY state"
+    )
+    rows = await cursor.fetchall()
+    result = {"processando": 0, "falha": 0, "validado": 0}
+    for row in rows:
+        result[row["state"]] = row["cnt"]
+    return result
