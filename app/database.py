@@ -45,10 +45,16 @@ async def init_db():
             collect_id TEXT PRIMARY KEY,
             motorista TEXT DEFAULT '',
             placa TEXT DEFAULT '',
+            peso_coletado REAL DEFAULT 0,
             observacao TEXT DEFAULT '',
             updated_at TEXT NOT NULL
         )
     """)
+    # Migration: add peso_coletado column if table existed before this update
+    try:
+        await db.execute("ALTER TABLE collection_metadata ADD COLUMN peso_coletado REAL DEFAULT 0")
+    except Exception:
+        pass  # Column already exists
     await db.commit()
 
 
@@ -134,7 +140,7 @@ async def upsert_collection_metadata(collect_id: str, data: dict):
     existing = await cursor.fetchone()
     if existing:
         fields, values = [], []
-        for key in ("motorista", "placa", "observacao"):
+        for key in ("motorista", "placa", "peso_coletado", "observacao"):
             if key in data:
                 fields.append(f"{key} = ?")
                 values.append(data[key])
@@ -147,10 +153,10 @@ async def upsert_collection_metadata(collect_id: str, data: dict):
             )
     else:
         await db.execute(
-            """INSERT INTO collection_metadata (collect_id, motorista, placa, observacao, updated_at)
-               VALUES (?, ?, ?, ?, ?)""",
+            """INSERT INTO collection_metadata (collect_id, motorista, placa, peso_coletado, observacao, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?)""",
             (collect_id, data.get("motorista", ""), data.get("placa", ""),
-             data.get("observacao", ""), now),
+             data.get("peso_coletado", 0), data.get("observacao", ""), now),
         )
     await db.commit()
     cursor2 = await db.execute(
