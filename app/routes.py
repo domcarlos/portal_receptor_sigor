@@ -1,5 +1,6 @@
 """API Routes for Portal do Receptor"""
 import logging
+from datetime import datetime, timedelta
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from app.mtr_manager_client import MTRManagerClient
@@ -16,6 +17,43 @@ def get_mtr_manager():
     if _mtr_manager is None:
         _mtr_manager = MTRManagerClient()
     return _mtr_manager
+
+
+# =====================
+# STATS (BIG NUMBERS)
+# =====================
+
+@router.get("/stats")
+async def get_stats(receiver_name: Optional[str] = None):
+    """Compute real totals for the dashboard big numbers."""
+    client = get_mtr_manager()
+
+    # 1) Total emitted (from MTR Manager, just 1 record to get count)
+    data = await client.list_manifests(
+        receiver_name=receiver_name,
+        status="issued",
+        page=1,
+        page_size=1,
+    )
+    total_emitidos = data.get("pagination", {}).get("count", 0)
+
+    # 2) Count completos from local DB (have both motorista AND placa)
+    completos_count = await database.count_completos()
+
+    # 3) Incompletos = total emitted - completos in local DB
+    incompletos = max(0, total_emitidos - completos_count)
+
+    # 4) Processando / falha / validado from local validation_jobs table
+    job_stats = await database.count_validation_jobs()
+
+    return {
+        "pendente_baixa": total_emitidos,
+        "incompletos": incompletos,
+        "completos": completos_count,
+        "processando": job_stats.get("processando", 0),
+        "falha": job_stats.get("falha", 0),
+        "validado": job_stats.get("validado", 0),
+    }
 
 
 # =====================
