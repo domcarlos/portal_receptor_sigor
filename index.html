@@ -353,18 +353,22 @@
     }
 
     function updateStatCards() {
-        var now = new Date();
-        var expirar = 0, incompleto = 0, processando = 0, falha = 0, validado = 0;
+        // Fetch real totals from backend
+        fetch(API + '/stats?receiver_name=' + encodeURIComponent(receptorName))
+            .then(function(r) { return r.json(); })
+            .then(function(stats) {
+                document.getElementById('stat-pendente').textContent = (stats.pendente_baixa || 0).toLocaleString('pt-BR');
+                document.getElementById('stat-incompleto').textContent = (stats.incompletos || 0).toLocaleString('pt-BR');
+                document.getElementById('stat-processando').textContent = stats.processando || 0;
+                document.getElementById('stat-falha').textContent = stats.falha || 0;
+                document.getElementById('stat-validado').textContent = stats.validado || 0;
+            })
+            .catch(function(e) { console.error('Stats error:', e); });
 
-        // Compute a expirar / incompleto from current page data
+        // A expirar: computed from current page (no way to compute server-side without iterating all)
+        var now = new Date();
+        var expirar = 0;
         allEmitted.forEach(function(r) {
-            var cid = r.collect_id;
-            var q = validationQueue[cid];
-            if (q) {
-                if (q.state === 'processando') { processando++; return; }
-                if (q.state === 'falha') { falha++; return; }
-                if (q.state === 'validado') { validado++; return; }
-            }
             if (r.planned_date && r.planned_date !== '-') {
                 var parts = r.planned_date.split('/');
                 if (parts.length === 3) {
@@ -372,24 +376,9 @@
                     if ((now - d) / 86400000 > 7) expirar++;
                 }
             }
-            var mot = r.motorista || '';
-            var pla = r.placa || '';
-            if (!mot || !pla) incompleto++;
         });
-
-        // Pendente = total from API (all issued not yet received)
-        var pendente = totalApiCount - Object.keys(validationQueue).filter(function(k) {
-            return validationQueue[k].state === 'validado';
-        }).length;
-
-        document.getElementById('stat-pendente').textContent = pendente.toLocaleString('pt-BR');
-        // These are from current page only — show with page indicator
         var pageNote = allEmitted.length < totalApiCount ? ' *' : '';
         document.getElementById('stat-expirar').textContent = expirar + pageNote;
-        document.getElementById('stat-incompleto').textContent = incompleto + pageNote;
-        document.getElementById('stat-processando').textContent = processando;
-        document.getElementById('stat-falha').textContent = falha;
-        document.getElementById('stat-validado').textContent = validado;
     }
 
     // ========== FILTERS ==========
