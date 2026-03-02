@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portal do Receptor - SIGOR | Musa</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'DM Sans', -apple-system, sans-serif; background: #FAFAF5; color: #2D2A24; }
+
+/* Header */
+.header { background: #fff; border-bottom: 1px solid #E8E5D8; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; }
+.header-left { display: flex; align-items: center; gap: 12px; }
+.logo { width: 36px; height: 36px; background: #E8604C; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 18px; }
+.header h1 { font-size: 18px; font-weight: 700; color: #2D2A24; }
+.header-sub { font-size: 13px; color: #78756C; }
+.receptor-badge { background: #E8604C; color: #fff; padding: 6px 16px; border-radius: 20px; font-weight: 600; font-size: 14px; }
+
+/* Container */
+.container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+
+/* Stats */
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+.stat-card { background: #fff; border: 1px solid #E8E5D8; border-radius: 12px; padding: 20px; }
+.stat-label { font-size: 13px; color: #78756C; margin-bottom: 4px; }
+.stat-value { font-size: 28px; font-weight: 800; color: #2D2A24; }
+.stat-card.highlight { border-color: #E8604C; background: #FFF5F3; }
+.stat-card.highlight .stat-value { color: #E8604C; }
+
+/* Filters */
+.filters { background: #fff; border: 1px solid #E8E5D8; border-radius: 12px; padding: 16px 20px; margin-bottom: 24px; display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+.filter-group { display: flex; flex-direction: column; gap: 4px; }
+.filter-group label { font-size: 12px; color: #78756C; font-weight: 500; }
+.filter-group input, .filter-group select { padding: 8px 12px; border: 1px solid #E8E5D8; border-radius: 8px; font-family: inherit; font-size: 14px; background: #FAFAF5; }
+.filter-group input:focus, .filter-group select:focus { outline: none; border-color: #E8604C; }
+.btn { padding: 8px 20px; border-radius: 8px; border: none; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.btn-primary { background: #E8604C; color: #fff; }
+.btn-primary:hover { background: #D4503E; }
+.btn-secondary { background: #E8E5D8; color: #2D2A24; }
+.btn-secondary:hover { background: #DAD7CA; }
+
+/* Table */
+.table-wrapper { background: #fff; border: 1px solid #E8E5D8; border-radius: 12px; overflow: hidden; }
+.table-header { padding: 16px 20px; border-bottom: 1px solid #E8E5D8; display: flex; justify-content: space-between; align-items: center; }
+.table-header h2 { font-size: 16px; font-weight: 700; }
+.table-count { font-size: 13px; color: #78756C; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead th { background: #FAFAF5; padding: 12px 16px; text-align: left; font-weight: 600; color: #78756C; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #E8E5D8; white-space: nowrap; }
+tbody td { padding: 12px 16px; border-bottom: 1px solid #F0EDE4; vertical-align: top; }
+tbody tr:hover { background: #FAFAF5; }
+.status-badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+.status-incompleto { background: #FEF3C7; color: #92400E; }
+.status-completo { background: #D1FAE5; color: #065F46; }
+.status-coletado { background: #DBEAFE; color: #1E40AF; }
+.status-cancelado { background: #FEE2E2; color: #991B1B; }
+.status-default { background: #E8E5D8; color: #78756C; }
+
+/* Pagination */
+.pagination { display: flex; justify-content: center; align-items: center; gap: 8px; padding: 16px; }
+.pagination button { padding: 8px 14px; border: 1px solid #E8E5D8; border-radius: 8px; background: #fff; cursor: pointer; font-family: inherit; font-size: 13px; }
+.pagination button:hover:not(:disabled) { background: #FAFAF5; border-color: #E8604C; }
+.pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
+.pagination .current { background: #E8604C; color: #fff; border-color: #E8604C; }
+.pagination span { font-size: 13px; color: #78756C; }
+
+/* Loading */
+.loading { display: flex; align-items: center; justify-content: center; padding: 80px; flex-direction: column; gap: 16px; color: #78756C; }
+.spinner { width: 40px; height: 40px; border: 4px solid #E8E5D8; border-top: 4px solid #E8604C; border-radius: 50%; animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Welcome screen */
+.welcome { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; text-align: center; gap: 24px; }
+.welcome h2 { font-size: 24px; font-weight: 800; }
+.welcome p { font-size: 16px; color: #78756C; max-width: 500px; }
+.welcome-input { display: flex; gap: 12px; }
+.welcome-input input { padding: 12px 16px; border: 2px solid #E8E5D8; border-radius: 10px; font-size: 16px; font-family: inherit; width: 320px; }
+.welcome-input input:focus { outline: none; border-color: #E8604C; }
+
+/* Error */
+.error { background: #FEF2F2; border: 1px solid #FECACA; border-radius: 12px; padding: 20px; color: #991B1B; text-align: center; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .header { flex-direction: column; gap: 8px; align-items: flex-start; }
+  .stats { grid-template-columns: repeat(2, 1fr); }
+  .filters { flex-direction: column; }
+  .welcome-input { flex-direction: column; }
+  .welcome-input input { width: 100%; }
+  .table-wrapper { overflow-x: auto; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="logo">M</div>
+    <div>
+      <h1>Portal do Receptor</h1>
+      <div class="header-sub">SIGOR | Musa Gestão Ambiental</div>
+    </div>
+  </div>
+  <div id="receptor-name"></div>
+</div>
+
+<div class="container" id="app">
+  <div class="loading"><div class="spinner"></div><p>Carregando...</p></div>
+</div>
+
+<script>
+const API_BASE = 'https://portal-receptor-sigor.onrender.com/api';
+const PAGE_SIZE = 50;
+
+// State
+let state = {
+  receptor: '',
+  data: null,
+  loading: false,
+  error: null,
+  page: 1,
+  filters: { status: '', generator_name: '', issuer: '' }
+};
+
+// Read receptor from URL
+function getReceptorFromURL() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('receptor') || '';
+}
+
+// Render the app
+function render() {
+  const app = document.getElementById('app');
+  const nameEl = document.getElementById('receptor-name');
+
+  if (!state.receptor) {
+    nameEl.innerHTML = '';
+    app.innerHTML = renderWelcome();
+    attachWelcomeEvents();
+    return;
+  }
+
+  nameEl.innerHTML = '<span class="receptor-badge">' + escapeHtml(state.receptor) + '</span>';
+
+  if (state.loading) {
+    app.innerHTML = '<div class="loading"><div class="spinner"></div><p>Buscando MTRs de ' + escapeHtml(state.receptor) + '...</p></div>';
+    return;
+  }
+
+  if (state.error) {
+    app.innerHTML = '<div class="error"><p><strong>Erro:</strong> ' + escapeHtml(state.error) + '</p><p style="margin-top:8px"><button class="btn btn-primary" onclick="fetchData()">Tentar novamente</button></p></div>';
+    return;
+  }
+
+  if (!state.data) return;
+
+  const results = state.data.results || [];
+  const pagination = state.data.pagination || {};
+
+  app.innerHTML = renderStats(results, pagination) + renderFilters() + renderTable(results, pagination);
+  attachFilterEvents();
+}
+
+function renderWelcome() {
+  return `
+    <div class="welcome">
+      <div class="logo" style="width:64px;height:64px;font-size:32px;border-radius:16px">M</div>
+      <h2>Portal do Receptor</h2>
+      <p>Digite o nome do receptor para visualizar os MTRs e coletas registrados no sistema.</p>
+      <div class="welcome-input">
+        <input type="text" id="receptor-input" placeholder="Ex: FLACIPEL, RECICLE SOLUCOES..." autofocus>
+        <button class="btn btn-primary" onclick="goToReceptor()">Buscar</button>
+      </div>
+      <p style="font-size:13px;color:#A09D95">Ou acesse direto: ?receptor=NOME_DO_RECEPTOR</p>
+    </div>`;
+}
+
+function renderStats(results, pagination) {
+  const total = pagination.count || 0;
+  const incompletos = results.filter(r => r.collect_status === 'Incompleto').length;
+  const completos = results.filter(r => r.collect_status === 'Completo').length;
+  const pesoTotal = results.reduce((s, r) => s + (r.units_estimated || 0), 0);
+
+  return `
+    <div class="stats">
+      <div class="stat-card highlight">
+        <div class="stat-label">Total de MTRs</div>
+        <div class="stat-value">${total.toLocaleString('pt-BR')}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Nesta página</div>
+        <div class="stat-value">${results.length}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Incompletos (página)</div>
+        <div class="stat-value">${incompletos}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Peso estimado (página)</div>
+        <div class="stat-value">${pesoTotal.toLocaleString('pt-BR', {minimumFractionDigits: 1})} t</div>
+      </div>
+    </div>`;
+}
+
+function renderFilters() {
+  return `
+    <div class="filters">
+      <div class="filter-group">
+        <label>Gerador</label>
+        <input type="text" id="f-gerador" placeholder="Nome do gerador" value="${escapeHtml(state.filters.generator_name)}">
+      </div>
+      <div class="filter-group">
+        <label>Status</label>
+        <select id="f-status">
+          <option value="">Todos</option>
+          <option value="incomplete" ${state.filters.status === 'incomplete' ? 'selected' : ''}>Incompleto</option>
+          <option value="complete" ${state.filters.status === 'complete' ? 'selected' : ''}>Completo</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Orgão</label>
+        <select id="f-issuer">
+          <option value="">Todos</option>
+          <option value="sigor" ${state.filters.issuer === 'sigor' ? 'selected' : ''}>SIGOR</option>
+          <option value="sinir" ${state.filters.issuer === 'sinir' ? 'selected' : ''}>SINIR</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" onclick="applyFilters()">Filtrar</button>
+      <button class="btn btn-secondary" onclick="clearFilters()">Limpar</button>
+    </div>`;
+}
+
+function renderTable(results, pagination) {
+  const lastPage = pagination.last_page || 1;
+
+  let rows = '';
+  if (results.length === 0) {
+    rows = '<tr><td colspan="9" style="text-align:center;padding:40px;color:#78756C">Nenhum MTR encontrado para este receptor.</td></tr>';
+  } else {
+    results.forEach(r => {
+      const statusClass = getStatusClass(r.collect_status);
+      rows += `<tr>
+        <td>${escapeHtml(r.issuer || '-')}</td>
+        <td>${escapeHtml(r.planned_date || '-')}</td>
+        <td style="max-width:200px">${escapeHtml(r.generator_name || '-')}</td>
+        <td>${escapeHtml(r.hauler_name || '-')}</td>
+        <td>${escapeHtml(r.material_name || '-')}</td>
+        <td>${escapeHtml(r.treatment || '-')}</td>
+        <td style="text-align:right">${(r.units_estimated || 0).toLocaleString('pt-BR', {minimumFractionDigits: 1})}</td>
+        <td><span class="status-badge ${statusClass}">${escapeHtml(r.collect_status || '-')}</span></td>
+        <td style="font-size:11px;color:#78756C;max-width:100px;word-break:break-all">${escapeHtml(r.collect_id || '-')}</td>
+      </tr>`;
+    });
+  }
+
+  let paginationHtml = '';
+  if (lastPage > 1) {
+    paginationHtml = `<div class="pagination">
+      <button onclick="goToPage(1)" ${state.page <= 1 ? 'disabled' : ''}>«</button>
+      <button onclick="goToPage(${state.page - 1})" ${state.page <= 1 ? 'disabled' : ''}>‹ Anterior</button>
+      <span>Página <strong>${state.page}</strong> de <strong>${lastPage}</strong></span>
+      <button onclick="goToPage(${state.page + 1})" ${state.page >= lastPage ? 'disabled' : ''}>Próxima ›</button>
+      <button onclick="goToPage(${lastPage})" ${state.page >= lastPage ? 'disabled' : ''}>»</button>
+    </div>`;
+  }
+
+  return `
+    <div class="table-wrapper">
+      <div class="table-header">
+        <h2>MTRs / Coletas</h2>
+        <span class="table-count">${(pagination.count || 0).toLocaleString('pt-BR')} registros</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Orgão</th>
+              <th>Data Coleta</th>
+              <th>Gerador</th>
+              <th>Transportador</th>
+              <th>Material</th>
+              <th>Tratamento</th>
+              <th style="text-align:right">Peso (t)</th>
+              <th>Status</th>
+              <th>ID Coleta</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      ${paginationHtml}
+    </div>`;
+}
+
+// Helpers
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function getStatusClass(status) {
+  if (!status) return 'status-default';
+  const s = status.toLowerCase();
+  if (s.includes('incompleto')) return 'status-incompleto';
+  if (s.includes('completo')) return 'status-completo';
+  if (s.includes('coletado')) return 'status-coletado';
+  if (s.includes('cancelado')) return 'status-cancelado';
+  return 'status-default';
+}
+
+// Actions
+function goToReceptor() {
+  const input = document.getElementById('receptor-input');
+  if (input && input.value.trim()) {
+    const name = input.value.trim();
+    window.location.search = '?receptor=' + encodeURIComponent(name);
+  }
+}
+
+function goToPage(page) {
+  state.page = page;
+  fetchData();
+}
+
+function applyFilters() {
+  state.filters.generator_name = document.getElementById('f-gerador').value;
+  state.filters.status = document.getElementById('f-status').value;
+  state.filters.issuer = document.getElementById('f-issuer').value;
+  state.page = 1;
+  fetchData();
+}
+
+function clearFilters() {
+  state.filters = { status: '', generator_name: '', issuer: '' };
+  state.page = 1;
+  fetchData();
+}
+
+function attachWelcomeEvents() {
+  const input = document.getElementById('receptor-input');
+  if (input) {
+    input.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') goToReceptor();
+    });
+  }
+}
+
+function attachFilterEvents() {
+  // Enter key on filter inputs
+  const gerador = document.getElementById('f-gerador');
+  if (gerador) gerador.addEventListener('keydown', function(e) { if (e.key === 'Enter') applyFilters(); });
+}
+
+// Fetch data from API
+async function fetchData() {
+  state.loading = true;
+  state.error = null;
+  render();
+
+  try {
+    const params = new URLSearchParams();
+    params.set('receiver_name', state.receptor);
+    params.set('page_size', PAGE_SIZE);
+    if (state.filters.generator_name) params.set('generator_name', state.filters.generator_name);
+    if (state.filters.status) params.set('status', state.filters.status);
+    if (state.filters.issuer) params.set('issuer', state.filters.issuer);
+
+    const resp = await fetch(API_BASE + '/mtrs?' + params.toString());
+    if (!resp.ok) throw new Error('API retornou status ' + resp.status);
+
+    state.data = await resp.json();
+    state.loading = false;
+  } catch (e) {
+    state.loading = false;
+    state.error = e.message + '. Verifique se o backend está ativo (pode demorar ~30s no primeiro acesso).';
+  }
+
+  render();
+}
+
+// Init
+state.receptor = getReceptorFromURL();
+if (state.receptor) {
+  fetchData();
+} else {
+  render();
+}
+</script>
+</body>
+</html>
