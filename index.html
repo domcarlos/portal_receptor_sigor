@@ -180,9 +180,9 @@
 
                 <!-- Stats - computed from ALL loaded data -->
                 <div class="stat-cards">
-                    <div class="stat-card pendente" title="MTRs emitidos nao baixados"><div class="label"><i class="bi bi-clock"></i> Pend. Baixa</div><div class="number" id="stat-pendente">0</div></div>
-                    <div class="stat-card expirar" title="Emitidos ha mais de 7 dias da data coleta"><div class="label"><i class="bi bi-exclamation-triangle"></i> A Expirar</div><div class="number" id="stat-expirar">0</div></div>
-                    <div class="stat-card incompleto" title="Sem motorista, placa ou peso coletado"><div class="label"><i class="bi bi-pencil"></i> Incompletos</div><div class="number" id="stat-incompleto">0</div></div>
+                    <div class="stat-card pendente" title="Total de MTRs emitidos nao baixados"><div class="label"><i class="bi bi-clock"></i> Pend. Baixa</div><div class="number" id="stat-pendente">0</div></div>
+                    <div class="stat-card expirar" title="Emitidos ha mais de 7 dias (* = desta pagina)"><div class="label"><i class="bi bi-exclamation-triangle"></i> A Expirar</div><div class="number" id="stat-expirar">0</div></div>
+                    <div class="stat-card incompleto" title="Sem motorista/placa/peso (* = desta pagina)"><div class="label"><i class="bi bi-pencil"></i> Incompletos</div><div class="number" id="stat-incompleto">0</div></div>
                     <div class="stat-card processando" title="Na fila de baixa massiva"><div class="label"><i class="bi bi-arrow-repeat"></i> Processando</div><div class="number" id="stat-processando">0</div></div>
                     <div class="stat-card falha" title="Falha na baixa"><div class="label"><i class="bi bi-x-circle"></i> Falha</div><div class="number" id="stat-falha">0</div></div>
                     <div class="stat-card validado" title="Baixados com sucesso"><div class="label"><i class="bi bi-check-circle"></i> Validados</div><div class="number" id="stat-validado">0</div></div>
@@ -201,18 +201,6 @@
                         <button class="sel-btn" onclick="clearSelection()"><i class="bi bi-x"></i> Limpar</button>
                         <button class="sel-btn warn" onclick="bulkCopyPeso()" title="Copiar peso estimado para peso coletado"><i class="bi bi-clipboard-check"></i> Usar Peso Estimado</button>
                         <button class="sel-btn primary" onclick="validateSelected()"><i class="bi bi-check-circle"></i> Validar / Baixar</button>
-                    </div>
-                </div>
-
-                <!-- Loading more indicator with progress bar -->
-                <div id="loading-more" class="loading-more" style="display:none;">
-                    <div style="display:flex; align-items:center; gap:12px; justify-content:center;">
-                        <span class="spinner-sm"></span>
-                        <span>Carregando MTRs em background...</span>
-                        <span id="loading-progress" style="font-weight:600; color:var(--musa-green);"></span>
-                    </div>
-                    <div style="margin-top:8px; background:#e9ecef; border-radius:4px; height:6px; max-width:400px; margin-left:auto; margin-right:auto; overflow:hidden;">
-                        <div id="progress-bar-fill" style="height:100%; background:var(--musa-green); border-radius:4px; width:0%; transition:width 0.3s;"></div>
                     </div>
                 </div>
 
@@ -260,8 +248,6 @@
     var allEmitted = [];        // ALL emitted MTRs across all pages
     var filteredResults = [];   // after client-side filters
     var selectedIds = {};
-    var displayPage = 1;        // client-side display pagination
-    var displayPageSize = 50;
     var receptorName = '';
     var hasCredentials = false;
 
@@ -310,78 +296,41 @@
         } catch(e) { hasCredentials = false; }
     }
 
-    // ========== LOAD ALL PAGES (PROGRESSIVE) ==========
+    // ========== LOAD DATA (SERVER-SIDE PAGINATION) ==========
+    var totalApiCount = 0;
     var totalApiPages = 1;
-    var pagesLoaded = 0;
-    var isLoadingMore = false;
+    var currentApiPage = 1;
+    var apiPageSize = 200;
 
     async function loadAllPages() {
         showState('loading');
         allEmitted = [];
-        pagesLoaded = 0;
-        try {
-            // 1) Load FIRST page and show IMMEDIATELY
-            var data = await fetchPage(1, 200);
-            var totalCount = data.pagination ? data.pagination.count : 0;
-            totalApiPages = data.pagination ? data.pagination.last_page : 1;
-            addEmittedResults(data.results || []);
-            pagesLoaded = 1;
+        currentApiPage = 1;
+        await loadPage(currentApiPage);
+    }
 
-            // Show content right away with page 1 data
+    async function loadPage(page) {
+        try {
+            var data = await fetchPage(page, apiPageSize);
+            totalApiCount = data.pagination ? data.pagination.count : 0;
+            totalApiPages = data.pagination ? data.pagination.last_page : 1;
+            currentApiPage = data.pagination ? data.pagination.page : 1;
+
+            allEmitted = (data.results || []).filter(function(r) {
+                return r.number && r.number !== '-' && r.number.trim() !== '';
+            });
+
             showState('main-content');
             renderAll();
-
-            // 2) Load remaining pages in background with PARALLEL batches
-            if (totalApiPages > 1) {
-                isLoadingMore = true;
-                updateProgressBar();
-                document.getElementById('loading-more').style.display = '';
-                loadRemainingPages();
-            }
         } catch(err) {
             document.getElementById('error-message').textContent = err.message + '. O servidor pode estar iniciando (aguarde ~50s e tente novamente).';
             showState('error-state');
         }
     }
 
-    async function loadRemainingPages() {
-        var BATCH_SIZE = 3; // fetch 3 pages in parallel
-        var remaining = [];
-        for (var p = 2; p <= totalApiPages; p++) remaining.push(p);
-
-        while (remaining.length > 0) {
-            var batch = remaining.splice(0, BATCH_SIZE);
-            var promises = batch.map(function(p) {
-                return fetchPage(p, 200).then(function(data) {
-                    addEmittedResults(data.results || []);
-                    pagesLoaded++;
-                    updateProgressBar();
-                    renderAll();
-                }).catch(function(err) {
-                    pagesLoaded++;
-                    updateProgressBar();
-                    console.error('Erro pagina ' + p + ':', err);
-                });
-            });
-            await Promise.all(promises);
-        }
-
-        isLoadingMore = false;
-        document.getElementById('loading-more').style.display = 'none';
-        toast('Todas as ' + totalApiPages + ' paginas carregadas (' + allEmitted.length + ' MTRs emitidos)', 'success');
-    }
-
-    function updateProgressBar() {
-        var pct = Math.round((pagesLoaded / totalApiPages) * 100);
-        var el = document.getElementById('loading-progress');
-        el.innerHTML = pagesLoaded + '/' + totalApiPages + ' paginas &mdash; ' + allEmitted.length + ' MTRs';
-        var bar = document.getElementById('progress-bar-fill');
-        if (bar) bar.style.width = pct + '%';
-    }
-
     async function fetchPage(page, pageSize) {
         var url = API + '/mtrs?receiver_name=' + encodeURIComponent(receptorName)
-            + '&page_size=' + pageSize + '&page=' + page;
+            + '&status=issued&page_size=' + pageSize + '&page=' + page;
         var resp = await fetch(url);
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
         return await resp.json();
@@ -398,16 +347,16 @@
     // ========== RENDER ==========
     function renderAll() {
         updateStatCards();
-        var loadingLabel = isLoadingMore ? ' <small style="color:#999; font-weight:400;">(carregando...)</small>' : '';
-        document.getElementById('total-loaded').innerHTML = allEmitted.length + loadingLabel;
+        document.getElementById('total-loaded').textContent = totalApiCount.toLocaleString('pt-BR');
         applyFilters();
         renderQueue();
     }
 
     function updateStatCards() {
         var now = new Date();
-        var pendente = 0, expirar = 0, incompleto = 0, processando = 0, falha = 0, validado = 0;
+        var expirar = 0, incompleto = 0, processando = 0, falha = 0, validado = 0;
 
+        // Compute a expirar / incompleto from current page data
         allEmitted.forEach(function(r) {
             var cid = r.collect_id;
             var q = validationQueue[cid];
@@ -416,7 +365,6 @@
                 if (q.state === 'falha') { falha++; return; }
                 if (q.state === 'validado') { validado++; return; }
             }
-            pendente++;
             if (r.planned_date && r.planned_date !== '-') {
                 var parts = r.planned_date.split('/');
                 if (parts.length === 3) {
@@ -430,10 +378,16 @@
             if (!mot || !pla || pc <= 0) incompleto++;
         });
 
-        var prefix = isLoadingMore ? '~' : '';
-        document.getElementById('stat-pendente').textContent = prefix + pendente;
-        document.getElementById('stat-expirar').textContent = prefix + expirar;
-        document.getElementById('stat-incompleto').textContent = prefix + incompleto;
+        // Pendente = total from API (all issued not yet received)
+        var pendente = totalApiCount - Object.keys(validationQueue).filter(function(k) {
+            return validationQueue[k].state === 'validado';
+        }).length;
+
+        document.getElementById('stat-pendente').textContent = pendente.toLocaleString('pt-BR');
+        // These are from current page only — show with page indicator
+        var pageNote = allEmitted.length < totalApiCount ? ' *' : '';
+        document.getElementById('stat-expirar').textContent = expirar + pageNote;
+        document.getElementById('stat-incompleto').textContent = incompleto + pageNote;
         document.getElementById('stat-processando').textContent = processando;
         document.getElementById('stat-falha').textContent = falha;
         document.getElementById('stat-validado').textContent = validado;
@@ -462,26 +416,22 @@
             }
             return true;
         });
-        displayPage = 1;
         renderTable();
-        updateDisplayPagination();
+        updateServerPagination();
     }
 
     function val(id) { return (document.getElementById(id).value || '').trim(); }
 
-    // ========== TABLE with client-side pagination ==========
+    // ========== TABLE ==========
     function renderTable() {
         var tbody = document.getElementById('mtr-tbody');
         if (filteredResults.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:40px;color:#aaa;">Nenhum MTR emitido encontrado</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:40px;color:#aaa;">Nenhum MTR emitido encontrado nesta pagina</td></tr>';
             return;
         }
-        var start = (displayPage - 1) * displayPageSize;
-        var end = Math.min(start + displayPageSize, filteredResults.length);
-        var pageData = filteredResults.slice(start, end);
         var html = '';
-        for (var i = 0; i < pageData.length; i++) {
-            var r = pageData[i];
+        for (var i = 0; i < filteredResults.length; i++) {
+            var r = filteredResults[i];
             var cid = r.collect_id;
             var isSel = !!selectedIds[cid];
             var q = validationQueue[cid];
@@ -517,25 +467,23 @@
         tbody.innerHTML = html;
     }
 
-    function updateDisplayPagination() {
-        var total = filteredResults.length;
-        var totalPages = Math.max(1, Math.ceil(total / displayPageSize));
-        var start = (displayPage - 1) * displayPageSize + 1;
-        var end = Math.min(displayPage * displayPageSize, total);
-        if (total === 0) { start = 0; end = 0; }
-        document.getElementById('pagination-info').textContent = start + '-' + end + ' de ' + total + ' MTR(s)';
-        document.getElementById('page-number').textContent = displayPage;
-        document.getElementById('btn-prev').disabled = displayPage <= 1;
-        document.getElementById('btn-next').disabled = displayPage >= totalPages;
+    function updateServerPagination() {
+        var start = (currentApiPage - 1) * apiPageSize + 1;
+        var end = Math.min(currentApiPage * apiPageSize, totalApiCount);
+        if (totalApiCount === 0) { start = 0; end = 0; }
+        document.getElementById('pagination-info').textContent = start.toLocaleString('pt-BR') + '-' + end.toLocaleString('pt-BR') + ' de ' + totalApiCount.toLocaleString('pt-BR') + ' emitidos';
+        document.getElementById('page-number').textContent = currentApiPage;
+        document.getElementById('btn-prev').disabled = currentApiPage <= 1;
+        document.getElementById('btn-next').disabled = currentApiPage >= totalApiPages;
     }
 
     function changePage(d) {
-        var totalPages = Math.max(1, Math.ceil(filteredResults.length / displayPageSize));
-        var p = displayPage + d;
-        if (p < 1 || p > totalPages) return;
-        displayPage = p;
-        renderTable();
-        updateDisplayPagination();
+        var p = currentApiPage + d;
+        if (p < 1 || p > totalApiPages) return;
+        currentApiPage = p;
+        // Show loading in table while fetching
+        document.getElementById('mtr-tbody').innerHTML = '<tr><td colspan="12" style="text-align:center;padding:30px;"><div class="spinner" style="margin:0 auto;"></div></td></tr>';
+        loadPage(p);
     }
 
     // ========== INLINE EDIT ==========
@@ -591,12 +539,8 @@
         updateSelectionBar(); renderTable();
     }
     function toggleSelectAll(cb) {
-        // Select/deselect only visible page
-        var start = (displayPage - 1) * displayPageSize;
-        var end = Math.min(start + displayPageSize, filteredResults.length);
-        var pageData = filteredResults.slice(start, end);
-        if (cb.checked) { pageData.forEach(function(r) { selectedIds[r.collect_id] = true; }); }
-        else { pageData.forEach(function(r) { delete selectedIds[r.collect_id]; }); }
+        if (cb.checked) { filteredResults.forEach(function(r) { selectedIds[r.collect_id] = true; }); }
+        else { filteredResults.forEach(function(r) { delete selectedIds[r.collect_id]; }); }
         updateSelectionBar(); renderTable();
     }
     function clearSelection() {
