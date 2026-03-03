@@ -96,7 +96,6 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--musa-gre
 .toast-msg.error { background: #c0392b; } .toast-msg.success { background: var(--musa-green); }
 @keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
 @media (max-width: 768px) { .sidebar { display: none; } .main { margin-left: 0; } .main-body { padding: 16px; } .stat-cards { gap: 8px; } .stat-card { min-width: 80px; padding: 10px; } .stat-card .number { font-size: 1.2rem; } }
-
 /* Confirmation Modal */
 .modal-overlay { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-items:center; }
 .modal-overlay.show { display:flex; }
@@ -115,7 +114,6 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--musa-gre
 .modal-box .btn-cancel:hover { background:#f8f9fa; }
 .modal-box .btn-confirm { background:var(--musa-green); color:white; border:none; padding:8px 24px; border-radius:8px; font-weight:600; cursor:pointer; font-size:0.9rem; }
 .modal-box .btn-confirm:hover { opacity:0.9; }
-.modal-box .close-x { position:absolute; top:16px; right:16px; background:none; border:none; font-size:1.3rem; color:#adb5bd; cursor:pointer; }
 </style>
 </head>
 <body>
@@ -127,7 +125,7 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--musa-gre
     </div>
     <div class="sidebar-user">
         <div class="avatar">RC</div>
-        <div class="user-info"><div id="sidebar-receptor-name">Receptor</div><div><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="720017111702061d00321f0701135c111d">[email&#160;protected]</a></div></div>
+        <div class="user-info"><div id="sidebar-receptor-name">Receptor</div><div>receptor@musa.co</div></div>
     </div>
 </div>
 <div class="main">
@@ -232,20 +230,46 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--musa-gre
         </div>
     </div>
 </div>
+<!-- MODAL DE CONFIRMACAO DE BAIXA -->
+<div class="modal-overlay" id="baixa-modal" onclick="if(event.target===this)closeBaixaModal()">
+    <div class="modal-box">
+        <h5><i class="bi bi-shield-check" style="color:var(--musa-green);margin-right:6px;"></i> Confirmar Baixa no SIGOR</h5>
+        <div class="subtitle">Revise os dados antes de prosseguir. Esta acao e DEFINITIVA.</div>
+        <div class="count-info" id="modal-count">0 MTR(s) selecionado(s)</div>
+        <div class="count-sub" id="modal-count-sub">0 MTR(s) serao validados</div>
+        <div id="modal-incomplete-warn" style="display:none;font-size:0.85rem;color:#e67e22;margin-bottom:12px;"><i class="bi bi-exclamation-triangle"></i> </div>
+        <div class="warning-box">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <div>A baixa sera realizada diretamente no sistema SIGOR/CETESB. Apos confirmada, nao podera ser desfeita.</div>
+        </div>
+        <div class="field-group">
+            <label>Responsavel pelo Recebimento</label>
+            <select class="form-select form-select-sm" id="modal-responsavel"></select>
+            <div class="field-hint">Nome deve ser identico ao cadastrado no SIGOR</div>
+        </div>
+        <div class="field-group">
+            <label>Data de Recebimento</label>
+            <input type="date" class="form-control form-control-sm" id="modal-data-recebimento">
+            <div class="field-hint">Data em que os residuos foram efetivamente recebidos</div>
+        </div>
+        <div class="btn-row">
+            <button class="btn-cancel" onclick="closeBaixaModal()">Cancelar</button>
+            <button class="btn-confirm" onclick="confirmBaixa()"><i class="bi bi-check-circle"></i> Confirmar Baixa</button>
+        </div>
+    </div>
+</div>
 <div class="toast-container" id="toast-container"></div>
-<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+<script>
     var API = 'https://portal-receptor-sigor.onrender.com/api';
     var allEmitted = [];
     var filteredResults = [];
     var selectedIds = {};
     var receptorName = '';
     var hasCredentials = false;
-
     // Server-side validation state
     var validationJobs = [];
     var pollingInterval = null;
     var currentBatchId = null;
-
     // ========== INIT ==========
     function init() {
         var p = new URLSearchParams(window.location.search);
@@ -262,23 +286,18 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--musa-gre
         var inp = document.getElementById('receptor-input');
         if (inp) inp.addEventListener('keypress', function(e) { if (e.key === 'Enter') searchReceptor(); });
     }
-
     function showState(s) {
         ['loading','no-receptor','error-state','main-content'].forEach(function(id) { document.getElementById(id).style.display = 'none'; });
         document.getElementById(s).style.display = '';
     }
     function searchReceptor() { var v = document.getElementById('receptor-input').value.trim(); if (v) window.location.href = '?receptor=' + encodeURIComponent(v); }
     function toggleFilters() { var b = document.getElementById('filters-body'); var c = document.getElementById('filter-chevron'); if (b.style.display === 'none') { b.style.display = ''; c.className = 'bi bi-chevron-down'; } else { b.style.display = 'none'; c.className = 'bi bi-chevron-right'; } }
-
     async function checkCredentials() {
         try { var resp = await fetch(API + '/credentials'); if (resp.ok) { var c = await resp.json(); hasCredentials = c && c.length > 0; } } catch(e) { hasCredentials = false; }
     }
-
     // ========== LOAD DATA (SERVER-SIDE PAGINATION) ==========
     var totalApiCount = 0, totalApiPages = 1, currentApiPage = 1, apiPageSize = 200;
-
     async function loadAllPages() { showState('loading'); allEmitted = []; currentApiPage = 1; await loadPage(currentApiPage); }
-
     async function loadPage(page) {
         try {
             var data = await fetchPage(page, apiPageSize);
@@ -293,14 +312,12 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--musa-gre
             showState('error-state');
         }
     }
-
     async function fetchPage(page, pageSize) {
         var url = API + '/mtrs?receiver_name=' + encodeURIComponent(receptorName) + '&status=issued&page_size=' + pageSize + '&page=' + page;
         var resp = await fetch(url);
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
         return await resp.json();
     }
-
     // ========== RENDER ==========
     function renderAll() {
         updateStatCards();
@@ -308,7 +325,6 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--musa-gre
         applyFilters();
         renderQueue();
     }
-
     function updateStatCards() {
         fetch(API + '/stats?receiver_name=' + encodeURIComponent(receptorName))
             .then(function(r) { return r.json(); })
@@ -324,7 +340,6 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--musa-gre
         var pageNote = allEmitted.length < totalApiCount ? ' *' : '';
         document.getElementById('stat-expirar').textContent = expirar + pageNote;
     }
-
     // ========== FILTERS ==========
     function applyFilters() {
         var fg = val('filter-gerador').toLowerCase(), ft = val('filter-transportador').toLowerCase(), fm = val('filter-material').toLowerCase(), fo = val('filter-orgao'), fn = val('filter-numero').toLowerCase(), fcomp = val('filter-completude');
@@ -341,7 +356,6 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--musa-gre
         renderTable(); updateServerPagination();
     }
     function val(id) { return (document.getElementById(id).value || '').trim(); }
-
     // ========== TABLE ==========
     function renderTable() {
         var tbody = document.getElementById('mtr-tbody');
@@ -376,7 +390,6 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--musa-gre
         }
         tbody.innerHTML = html;
     }
-
     function updateServerPagination() {
         var start = (currentApiPage - 1) * apiPageSize + 1, end = Math.min(currentApiPage * apiPageSize, totalApiCount);
         if (totalApiCount === 0) { start = 0; end = 0; }
@@ -385,13 +398,11 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--musa-gre
         document.getElementById('btn-prev').disabled = currentApiPage <= 1;
         document.getElementById('btn-next').disabled = currentApiPage >= totalApiPages;
     }
-
     function changePage(d) {
         var p = currentApiPage + d; if (p < 1 || p > totalApiPages) return; currentApiPage = p;
         document.getElementById('mtr-tbody').innerHTML = '<tr><td colspan="12" style="text-align:center;padding:30px;"><div class="spinner" style="margin:0 auto;"></div></td></tr>';
         loadPage(p);
     }
-
     // ========== INLINE EDIT ==========
     function startEdit(cell, cid, field) {
         if (cell.querySelector('input')) return;
@@ -416,20 +427,17 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--musa-gre
         try { var body = {}; body[field] = value; await fetch(API + '/coletas/' + cid + '/metadata', { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) }); toast(field + ' salvo', 'success'); } catch(e) { toast('Erro ao salvar ' + field, 'error'); }
         updateStatCards(); renderTable();
     }
-
     // ========== HELPERS ==========
     function findResult(cid) { for (var i = 0; i < allEmitted.length; i++) { if (allEmitted[i].collect_id === cid) return allEmitted[i]; } return null; }
     function findJob(cid) { for (var i = 0; i < validationJobs.length; i++) { if (validationJobs[i].collect_id === cid) return validationJobs[i]; } return null; }
     function trunc(s, n) { return !s ? '-' : s.length > n ? s.substring(0,n) + '...' : s; }
     function esc(s) { return !s ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
     function toast(msg, type) { var c = document.getElementById('toast-container'); var div = document.createElement('div'); div.className = 'toast-msg ' + (type||''); div.textContent = msg; c.appendChild(div); setTimeout(function() { div.remove(); }, 5000); }
-
     // ========== SELECTION ==========
     function toggleRow(cb, cid) { if (cb.checked) selectedIds[cid] = true; else delete selectedIds[cid]; updateSelectionBar(); renderTable(); }
     function toggleSelectAll(cb) { if (cb.checked) { filteredResults.forEach(function(r) { selectedIds[r.collect_id] = true; }); } else { filteredResults.forEach(function(r) { delete selectedIds[r.collect_id]; }); } updateSelectionBar(); renderTable(); }
     function clearSelection() { selectedIds = {}; document.getElementById('select-all').checked = false; updateSelectionBar(); renderTable(); }
     function updateSelectionBar() { var n = Object.keys(selectedIds).length; document.getElementById('selection-bar').style.display = n > 0 ? 'flex' : 'none'; document.getElementById('selected-count').textContent = n; }
-
     // ========== BULK COPY PESO ==========
     async function bulkCopyPeso() {
         var ids = Object.keys(selectedIds); if (!ids.length) return;
@@ -445,15 +453,12 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--musa-gre
         toast('Peso copiado em ' + ok + ' de ' + toCopy.length + ' coleta(s)', 'success');
         clearSelection(); updateStatCards(); renderTable();
     }
-
     // ========== VALIDATE / BAIXAR (REAL SIGOR API) ==========
     var _baixaReadyItems = [];
-
     function validateSelected() {
         var ids = Object.keys(selectedIds);
         if (!ids.length) return;
         if (!hasCredentials) { toast('Sem credencial SIGOR cadastrada. Configure na aba Credenciais.', 'error'); return; }
-
         var incomplete = [], ready = [];
         var oldestDate = null;
         ids.forEach(function(cid) {
@@ -470,21 +475,16 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--musa-gre
                 }
             }
         });
-
         if (incomplete.length > 0 && ready.length === 0) { toast('Todas as coleta(s) incompletas. Complete motorista/placa antes.', 'error'); return; }
-
         _baixaReadyItems = ready;
-
         // Populate modal
         document.getElementById('modal-count').textContent = ids.length + ' MTR(s) selecionado(s)';
         document.getElementById('modal-count-sub').textContent = ready.length + ' MTR(s) serao validados';
-
         var iw = document.getElementById('modal-incomplete-warn');
         if (incomplete.length > 0) {
             iw.style.display = '';
             iw.textContent = incomplete.length + ' incompleto(s) serao ignorados (sem motorista/placa).';
         } else { iw.style.display = 'none'; }
-
         // Populate responsavel dropdown from credentials
         fetch(API + '/credentials').then(function(r) { return r.json(); }).then(function(creds) {
             var sel = document.getElementById('modal-responsavel');
@@ -498,28 +498,22 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--musa-gre
             if (names.length === 0) { sel.innerHTML = '<option value="">Nenhum responsavel cadastrado</option>'; }
             else { names.forEach(function(n) { sel.innerHTML += '<option value="' + esc(n) + '">' + esc(n) + '</option>'; }); }
         });
-
         // Set date
         var dateInput = document.getElementById('modal-data-recebimento');
         if (oldestDate) { dateInput.value = oldestDate; }
         else { dateInput.value = new Date().toISOString().split('T')[0]; }
-
         // Show modal
         document.getElementById('baixa-modal').classList.add('show');
     }
-
     function closeBaixaModal() {
         document.getElementById('baixa-modal').classList.remove('show');
     }
-
     function confirmBaixa() {
         var responsavel = document.getElementById('modal-responsavel').value;
         var dataReceb = document.getElementById('modal-data-recebimento').value;
         if (!responsavel) { toast('Selecione o responsavel pela recepcao.', 'error'); return; }
         if (!dataReceb) { toast('Selecione a data de recebimento.', 'error'); return; }
-
         closeBaixaModal();
-
         fetch(API + '/baixa', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -535,7 +529,6 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--musa-gre
         })
         .catch(function(e) { toast('Erro ao iniciar baixa: ' + e.message, 'error'); });
     }
-
     // ========== VALIDATION JOBS (SERVER-SIDE) ==========
     function loadValidationJobs() {
         fetch(API + '/validation-jobs')
@@ -550,9 +543,7 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--musa-gre
                 if (!hasProcessing && pollingInterval) { clearInterval(pollingInterval); pollingInterval = null; }
             }).catch(function(e) { console.error('Jobs error:', e); });
     }
-
     function startPollingJobs() { if (pollingInterval) return; pollingInterval = setInterval(loadValidationJobs, 4000); }
-
     function loadBatchProgress() {
         fetch(API + '/batch-progress')
             .then(function(r) { return r.json(); })
@@ -578,14 +569,12 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--musa-gre
                 section.innerHTML = html;
             }).catch(function() {});
     }
-
     function cancelBatch(batchId) {
         if (!confirm('Cancelar baixa em andamento?')) return;
         fetch(API + '/baixa/' + batchId + '/cancel', { method: 'POST' })
             .then(function() { toast('Cancelamento solicitado', 'success'); loadValidationJobs(); })
             .catch(function(e) { toast('Erro: ' + e.message, 'error'); });
     }
-
     // ========== PROCESSING QUEUE ==========
     function renderQueue() {
         var section = document.getElementById('queue-section');
@@ -609,18 +598,15 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--musa-gre
         });
         document.getElementById('queue-body').innerHTML = html;
     }
-
     function removeQueue(cid) {
         fetch(API + '/validation-jobs/' + cid, { method: 'DELETE' }).then(function() { loadValidationJobs(); }).catch(function(e) { toast('Erro: ' + e.message, 'error'); });
     }
-
     function retryQueue(cid) {
         fetch(API + '/validation-jobs/' + cid + '/retry', { method: 'POST' })
             .then(function(r) { if (!r.ok) return r.json().then(function(e) { throw new Error(e.detail||'Erro'); }); return r.json(); })
             .then(function() { toast('Retry iniciado', 'success'); startPollingJobs(); loadValidationJobs(); })
             .catch(function(e) { toast('Erro retry: ' + e.message, 'error'); });
     }
-
     // ========== EXPORT ==========
     function exportCSV() {
         var data = filteredResults.length > 0 ? filteredResults : allEmitted; if (!data.length) return;
@@ -635,8 +621,6 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--musa-gre
         var url = URL.createObjectURL(blob); var a = document.createElement('a'); a.href = url;
         a.download = 'mtrs_' + receptorName.replace(/\s+/g,'_') + '_' + new Date().toISOString().slice(0,10) + '.csv'; a.click(); URL.revokeObjectURL(url);
     }
-
-
     // ========== VIEW SWITCHING ==========
     function showView(view) {
         var navCred = document.getElementById('nav-credentials');
@@ -663,10 +647,8 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--musa-gre
             else showState('no-receptor');
         }
     }
-
     // ========== CREDENTIALS CRUD ==========
     var editingCredId = null;
-
     async function loadCredentials() {
         try {
             var resp = await fetch(API + '/credentials');
@@ -687,7 +669,6 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--musa-gre
             hasCredentials = creds.length > 0;
         } catch(e) { toast('Erro ao carregar credenciais: ' + e.message, 'error'); }
     }
-
     async function saveCred() {
         var data = {
             orgao: document.getElementById('cred-orgao').value.trim(),
@@ -710,7 +691,6 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--musa-gre
             checkCredentials();
         } catch(e) { toast('Erro: ' + e.message, 'error'); }
     }
-
     async function editCred(id) {
         try {
             var resp = await fetch(API + '/credentials/' + id);
@@ -726,7 +706,6 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--musa-gre
             document.getElementById('cred-cancel-btn').style.display = '';
         } catch(e) { toast('Erro: ' + e.message, 'error'); }
     }
-
     function cancelEditCred() {
         editingCredId = null;
         document.getElementById('cred-form-title').textContent = 'Adicionar Credencial';
@@ -738,11 +717,7 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--musa-gre
         document.getElementById('cred-senha').value = '';
         document.getElementById('cred-responsavel').value = '';
     }
-
     async function deleteCred(id) {
-        if (!confirm('Remover esta credencial?')) return;
-        try {
-               async function deleteCred(id) {
         if (!confirm('Remover esta credencial?')) return;
         try {
             await fetch(API + '/credentials/' + id, { method: 'DELETE' });
@@ -751,7 +726,6 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--musa-gre
             checkCredentials();
         } catch(e) { toast('Erro: ' + e.message, 'error'); }
     }
-
     init();
 </script>
 </body>
