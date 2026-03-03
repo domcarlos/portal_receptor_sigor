@@ -96,6 +96,26 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--musa-gre
 .toast-msg.error { background: #c0392b; } .toast-msg.success { background: var(--musa-green); }
 @keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
 @media (max-width: 768px) { .sidebar { display: none; } .main { margin-left: 0; } .main-body { padding: 16px; } .stat-cards { gap: 8px; } .stat-card { min-width: 80px; padding: 10px; } .stat-card .number { font-size: 1.2rem; } }
+
+/* Confirmation Modal */
+.modal-overlay { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-items:center; }
+.modal-overlay.show { display:flex; }
+.modal-box { background:white; border-radius:12px; padding:28px; max-width:520px; width:90%; max-height:90vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.3); }
+.modal-box h5 { font-weight:700; color:#1a1a2e; margin:0 0 4px; font-size:1.15rem; }
+.modal-box .subtitle { color:#6c757d; font-size:0.85rem; margin-bottom:18px; }
+.modal-box .count-info { font-weight:600; color:#1a1a2e; margin-bottom:4px; }
+.modal-box .count-sub { font-size:0.85rem; color:#6c757d; margin-bottom:14px; }
+.modal-box .warning-box { background:#fef9e7; border:1px solid #f4d35e; border-radius:8px; padding:12px 14px; margin-bottom:18px; font-size:0.85rem; color:#7d6608; display:flex; gap:8px; align-items:flex-start; }
+.modal-box .warning-box i { color:#e67e22; font-size:1rem; margin-top:2px; }
+.modal-box label { font-size:0.8rem; color:#6c757d; font-weight:500; display:block; margin-bottom:6px; }
+.modal-box .field-hint { font-size:0.75rem; color:#adb5bd; margin-top:4px; }
+.modal-box .field-group { margin-bottom:16px; }
+.modal-box .btn-row { display:flex; gap:10px; justify-content:flex-end; margin-top:20px; }
+.modal-box .btn-cancel { background:white; border:1px solid #dee2e6; color:#495057; padding:8px 20px; border-radius:8px; font-weight:500; cursor:pointer; font-size:0.9rem; }
+.modal-box .btn-cancel:hover { background:#f8f9fa; }
+.modal-box .btn-confirm { background:var(--musa-green); color:white; border:none; padding:8px 24px; border-radius:8px; font-weight:600; cursor:pointer; font-size:0.9rem; }
+.modal-box .btn-confirm:hover { opacity:0.9; }
+.modal-box .close-x { position:absolute; top:16px; right:16px; background:none; border:none; font-size:1.3rem; color:#adb5bd; cursor:pointer; }
 </style>
 </head>
 <body>
@@ -107,7 +127,7 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--musa-gre
     </div>
     <div class="sidebar-user">
         <div class="avatar">RC</div>
-        <div class="user-info"><div id="sidebar-receptor-name">Receptor</div><div>receptor@musa.co</div></div>
+        <div class="user-info"><div id="sidebar-receptor-name">Receptor</div><div><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="720017111702061d00321f0701135c111d">[email&#160;protected]</a></div></div>
     </div>
 </div>
 <div class="main">
@@ -213,7 +233,7 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--musa-gre
     </div>
 </div>
 <div class="toast-container" id="toast-container"></div>
-<script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
     var API = 'https://portal-receptor-sigor.onrender.com/api';
     var allEmitted = [];
     var filteredResults = [];
@@ -427,34 +447,83 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--musa-gre
     }
 
     // ========== VALIDATE / BAIXAR (REAL SIGOR API) ==========
+    var _baixaReadyItems = [];
+
     function validateSelected() {
         var ids = Object.keys(selectedIds);
         if (!ids.length) return;
         if (!hasCredentials) { toast('Sem credencial SIGOR cadastrada. Configure na aba Credenciais.', 'error'); return; }
 
         var incomplete = [], ready = [];
+        var oldestDate = null;
         ids.forEach(function(cid) {
             var r = findResult(cid); if (!r) return;
             var missing = [];
             if (!(r.motorista||'')) missing.push('motorista');
             if (!(r.placa||'')) missing.push('placa');
             if (missing.length > 0) incomplete.push({cid:cid, number:r.number, missing:missing});
-            else ready.push({ collect_id: cid, mtr_number: r.number, motorista: r.motorista, placa: r.placa, peso_coletado: r.peso_coletado || 0 });
+            else {
+                ready.push({ collect_id: cid, mtr_number: r.number, motorista: r.motorista, placa: r.placa, peso_coletado: r.peso_coletado || 0 });
+                if (r.planned_date_at) {
+                    var d = r.planned_date_at.split('T')[0];
+                    if (!oldestDate || d < oldestDate) oldestDate = d;
+                }
+            }
         });
 
         if (incomplete.length > 0 && ready.length === 0) { toast('Todas as coleta(s) incompletas. Complete motorista/placa antes.', 'error'); return; }
 
-        var eta = Math.round(ready.length * 0.27);
-        var msg = ready.length + ' MTR(s) pronto(s) para baixa DEFINITIVA no SIGOR.';
-        if (incomplete.length > 0) msg += '\n' + incomplete.length + ' incompleto(s) serao ignorados.';
-        msg += '\n\nTempo estimado: ~' + eta + ' minuto(s) (rate limit: ~10/min)';
-        msg += '\n\nATENCAO: Esta acao e DEFINITIVA. Deseja prosseguir?';
-        if (!confirm(msg)) return;
+        _baixaReadyItems = ready;
+
+        // Populate modal
+        document.getElementById('modal-count').textContent = ids.length + ' MTR(s) selecionado(s)';
+        document.getElementById('modal-count-sub').textContent = ready.length + ' MTR(s) serao validados';
+
+        var iw = document.getElementById('modal-incomplete-warn');
+        if (incomplete.length > 0) {
+            iw.style.display = '';
+            iw.textContent = incomplete.length + ' incompleto(s) serao ignorados (sem motorista/placa).';
+        } else { iw.style.display = 'none'; }
+
+        // Populate responsavel dropdown from credentials
+        fetch(API + '/credentials').then(function(r) { return r.json(); }).then(function(creds) {
+            var sel = document.getElementById('modal-responsavel');
+            sel.innerHTML = '';
+            var names = [];
+            (creds || []).forEach(function(c) {
+                (c.responsaveis || []).forEach(function(n) {
+                    if (n && names.indexOf(n) < 0) { names.push(n); }
+                });
+            });
+            if (names.length === 0) { sel.innerHTML = '<option value="">Nenhum responsavel cadastrado</option>'; }
+            else { names.forEach(function(n) { sel.innerHTML += '<option value="' + esc(n) + '">' + esc(n) + '</option>'; }); }
+        });
+
+        // Set date
+        var dateInput = document.getElementById('modal-data-recebimento');
+        if (oldestDate) { dateInput.value = oldestDate; }
+        else { dateInput.value = new Date().toISOString().split('T')[0]; }
+
+        // Show modal
+        document.getElementById('baixa-modal').classList.add('show');
+    }
+
+    function closeBaixaModal() {
+        document.getElementById('baixa-modal').classList.remove('show');
+    }
+
+    function confirmBaixa() {
+        var responsavel = document.getElementById('modal-responsavel').value;
+        var dataReceb = document.getElementById('modal-data-recebimento').value;
+        if (!responsavel) { toast('Selecione o responsavel pela recepcao.', 'error'); return; }
+        if (!dataReceb) { toast('Selecione a data de recebimento.', 'error'); return; }
+
+        closeBaixaModal();
 
         fetch(API + '/baixa', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ items: ready })
+            body: JSON.stringify({ items: _baixaReadyItems, responsavel: responsavel, data_recebimento: dataReceb })
         })
         .then(function(r) { if (!r.ok) return r.json().then(function(e) { throw new Error(e.detail || 'Erro ' + r.status); }); return r.json(); })
         .then(function(data) {
@@ -673,14 +742,4 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--musa-gre
     async function deleteCred(id) {
         if (!confirm('Remover esta credencial?')) return;
         try {
-            await fetch(API + '/credentials/' + id, { method: 'DELETE' });
-            toast('Credencial removida', 'success');
-            loadCredentials();
-            checkCredentials();
-        } catch(e) { toast('Erro: ' + e.message, 'error'); }
-    }
-
-    init();
-</script>
-</body>
-</html>
+            await fetch(API + '/credentials/' + id, { method: 'DELETE'
