@@ -29,7 +29,7 @@ class SigorClient:
         self.token: Optional[str] = None
         self.token_expiry: float = 0
         self._credentials: Optional[dict] = None
-        self._http = httpx.AsyncClient(timeout=30.0)
+        self._http = httpx.AsyncClient(timeout=30.0, verify=False)
 
     async def close(self):
         await self._http.aclose()
