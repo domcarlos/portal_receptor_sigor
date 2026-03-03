@@ -102,8 +102,8 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--musa-gre
 <div class="sidebar">
     <div class="sidebar-logo"><h5>musa</h5><small>Receptor</small></div>
     <div class="sidebar-nav">
-        <a href="#"><i class="bi bi-key"></i> Credenciais</a>
-        <a href="#" class="active"><i class="bi bi-file-earmark-text"></i> MTRs</a>
+        <a href="#" onclick="showView('credentials'); return false;" id="nav-credentials"><i class="bi bi-key"></i> Credenciais</a>
+        <a href="#" onclick="showView('mtrs'); return false;" id="nav-mtrs" class="active"><i class="bi bi-file-earmark-text"></i> MTRs</a>
     </div>
     <div class="sidebar-user">
         <div class="avatar">RC</div>
@@ -126,6 +126,27 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--musa-gre
             <i class="bi bi-exclamation-triangle" style="color:#ffc107;"></i><h5>Erro ao carregar dados</h5>
             <p style="color:#6c757d;" id="error-message"></p>
             <button class="btn" style="background:var(--musa-green); color:white;" onclick="loadAllPages()"><i class="bi bi-arrow-clockwise"></i> Tentar novamente</button>
+        </div>
+        <!-- CREDENTIALS VIEW -->
+        <div id="credentials-view" style="display:none;">
+            <div style="background:white;border-radius:10px;border:1px solid #e9ecef;padding:24px;margin-bottom:20px;">
+                <h5 style="margin:0 0 20px;font-weight:700;color:#1a1a2e;">Credenciais SIGOR</h5>
+                <div id="cred-list"></div>
+                <hr>
+                <h6 style="font-weight:600;color:#495057;margin-bottom:14px;" id="cred-form-title">Adicionar Credencial</h6>
+                <div class="row g-3">
+                    <div class="col-md-4"><label style="font-size:0.8rem;color:#6c757d;font-weight:500;">Orgao</label><input type="text" class="form-control form-control-sm" id="cred-orgao" value="CETESB"></div>
+                    <div class="col-md-4"><label style="font-size:0.8rem;color:#6c757d;font-weight:500;">Unidade (nome)</label><input type="text" class="form-control form-control-sm" id="cred-unidade" placeholder="Nome da unidade"></div>
+                    <div class="col-md-4"><label style="font-size:0.8rem;color:#6c757d;font-weight:500;">Codigo Unidade (SIGOR)</label><input type="number" class="form-control form-control-sm" id="cred-unidade-codigo" placeholder="Ex: 12345"></div>
+                    <div class="col-md-4"><label style="font-size:0.8rem;color:#6c757d;font-weight:500;">Login (CPF, so numeros)</label><input type="text" class="form-control form-control-sm" id="cred-login" placeholder="12345678900"></div>
+                    <div class="col-md-4"><label style="font-size:0.8rem;color:#6c757d;font-weight:500;">Senha SIGOR</label><input type="password" class="form-control form-control-sm" id="cred-senha" placeholder="Senha"></div>
+                    <div class="col-md-4"><label style="font-size:0.8rem;color:#6c757d;font-weight:500;">Responsavel Recebimento</label><input type="text" class="form-control form-control-sm" id="cred-responsavel" placeholder="Nome identico ao SIGOR"></div>
+                </div>
+                <div style="margin-top:16px;display:flex;gap:8px;">
+                    <button class="btn btn-sm" style="background:var(--musa-green);color:white;font-weight:600;" onclick="saveCred()">Salvar</button>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="cancelEditCred()" id="cred-cancel-btn" style="display:none;">Cancelar</button>
+                </div>
+            </div>
         </div>
         <div id="main-content" style="display:none;">
             <div class="filters-card">
@@ -544,6 +565,119 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--musa-gre
         var blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
         var url = URL.createObjectURL(blob); var a = document.createElement('a'); a.href = url;
         a.download = 'mtrs_' + receptorName.replace(/\s+/g,'_') + '_' + new Date().toISOString().slice(0,10) + '.csv'; a.click(); URL.revokeObjectURL(url);
+    }
+
+
+    // ========== VIEW SWITCHING ==========
+    function showView(view) {
+        var navCred = document.getElementById('nav-credentials');
+        var navMtrs = document.getElementById('nav-mtrs');
+        var credView = document.getElementById('credentials-view');
+        var mainContent = document.getElementById('main-content');
+        var mainHeader = document.querySelector('.main-header h4');
+        var mainSubtitle = document.getElementById('header-subtitle');
+        if (view === 'credentials') {
+            navCred.classList.add('active'); navMtrs.classList.remove('active');
+            credView.style.display = ''; mainContent.style.display = 'none';
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('no-receptor').style.display = 'none';
+            document.getElementById('error-state').style.display = 'none';
+            mainHeader.textContent = 'Credenciais SIGOR';
+            mainSubtitle.textContent = 'Configure as credenciais para autenticacao no SIGOR/CETESB';
+            loadCredentials();
+        } else {
+            navMtrs.classList.add('active'); navCred.classList.remove('active');
+            credView.style.display = 'none';
+            mainHeader.textContent = 'Manifestos de Transporte (MTRs)';
+            mainSubtitle.textContent = 'Receptor: ' + receptorName;
+            if (receptorName) { if (allEmitted.length > 0) showState('main-content'); else loadAllPages(); }
+            else showState('no-receptor');
+        }
+    }
+
+    // ========== CREDENTIALS CRUD ==========
+    var editingCredId = null;
+
+    async function loadCredentials() {
+        try {
+            var resp = await fetch(API + '/credentials');
+            var creds = await resp.json();
+            var el = document.getElementById('cred-list');
+            if (!creds || creds.length === 0) { el.innerHTML = '<p style="color:#999;font-size:0.85rem;">Nenhuma credencial cadastrada.</p>'; return; }
+            var html = '';
+            creds.forEach(function(c) {
+                html += '<div style="background:#f8f9fa;border-radius:8px;padding:12px 16px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">' +
+                    '<div><strong>' + esc(c.orgao) + '</strong> - ' + esc(c.unidade) + ' (cod: ' + c.unidade_codigo + ')<br>' +
+                    '<span style="font-size:0.8rem;color:#6c757d;">Login: ' + esc(c.login) + ' | Responsavel: ' + esc((c.responsaveis||[])[0]||'-') + '</span></div>' +
+                    '<div style="display:flex;gap:6px;">' +
+                    '<button class="btn btn-sm btn-outline-primary" onclick="editCred(' + c.id + ')"><i class="bi bi-pencil"></i></button>' +
+                    '<button class="btn btn-sm btn-outline-danger" onclick="deleteCred(' + c.id + ')"><i class="bi bi-trash"></i></button>' +
+                    '</div></div>';
+            });
+            el.innerHTML = html;
+            hasCredentials = creds.length > 0;
+        } catch(e) { toast('Erro ao carregar credenciais: ' + e.message, 'error'); }
+    }
+
+    async function saveCred() {
+        var data = {
+            orgao: document.getElementById('cred-orgao').value.trim(),
+            unidade: document.getElementById('cred-unidade').value.trim(),
+            unidade_codigo: parseInt(document.getElementById('cred-unidade-codigo').value) || 0,
+            login: document.getElementById('cred-login').value.trim(),
+            senha: document.getElementById('cred-senha').value,
+            responsaveis: [document.getElementById('cred-responsavel').value.trim()]
+        };
+        if (!data.login || !data.senha || !data.unidade_codigo) { toast('Preencha login, senha e codigo da unidade', 'error'); return; }
+        if (!data.responsaveis[0]) { toast('Preencha o nome do responsavel', 'error'); return; }
+        try {
+            var url = API + '/credentials' + (editingCredId ? '/' + editingCredId : '');
+            var method = editingCredId ? 'PUT' : 'POST';
+            var resp = await fetch(url, { method: method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(data) });
+            if (!resp.ok) { var err = await resp.json(); throw new Error(err.detail || 'Erro'); }
+            toast(editingCredId ? 'Credencial atualizada!' : 'Credencial salva!', 'success');
+            cancelEditCred();
+            loadCredentials();
+            checkCredentials();
+        } catch(e) { toast('Erro: ' + e.message, 'error'); }
+    }
+
+    async function editCred(id) {
+        try {
+            var resp = await fetch(API + '/credentials/' + id);
+            var c = await resp.json();
+            document.getElementById('cred-orgao').value = c.orgao || '';
+            document.getElementById('cred-unidade').value = c.unidade || '';
+            document.getElementById('cred-unidade-codigo').value = c.unidade_codigo || '';
+            document.getElementById('cred-login').value = c.login || '';
+            document.getElementById('cred-senha').value = c.senha || '';
+            document.getElementById('cred-responsavel').value = (c.responsaveis||[])[0] || '';
+            editingCredId = id;
+            document.getElementById('cred-form-title').textContent = 'Editar Credencial #' + id;
+            document.getElementById('cred-cancel-btn').style.display = '';
+        } catch(e) { toast('Erro: ' + e.message, 'error'); }
+    }
+
+    function cancelEditCred() {
+        editingCredId = null;
+        document.getElementById('cred-form-title').textContent = 'Adicionar Credencial';
+        document.getElementById('cred-cancel-btn').style.display = 'none';
+        document.getElementById('cred-orgao').value = 'CETESB';
+        document.getElementById('cred-unidade').value = '';
+        document.getElementById('cred-unidade-codigo').value = '';
+        document.getElementById('cred-login').value = '';
+        document.getElementById('cred-senha').value = '';
+        document.getElementById('cred-responsavel').value = '';
+    }
+
+    async function deleteCred(id) {
+        if (!confirm('Remover esta credencial?')) return;
+        try {
+            await fetch(API + '/credentials/' + id, { method: 'DELETE' });
+            toast('Credencial removida', 'success');
+            loadCredentials();
+            checkCredentials();
+        } catch(e) { toast('Erro: ' + e.message, 'error'); }
     }
 
     init();
