@@ -7,16 +7,13 @@ from app.mtr_manager_client import MTRManagerClient
 from app.baixa_processor import process_baixa_batch, request_cancel
 from app import database
 from typing import Optional, List
-
 logger = logging.getLogger(__name__)
 router = APIRouter()
 _mtr_manager = None
-
 def get_mtr_manager():
     global _mtr_manager
     if _mtr_manager is None: _mtr_manager = MTRManagerClient()
     return _mtr_manager
-
 @router.get("/stats")
 async def get_stats(receiver_name: Optional[str] = None):
     client = get_mtr_manager()
@@ -25,7 +22,6 @@ async def get_stats(receiver_name: Optional[str] = None):
     completos = await database.count_completos()
     jobs = await database.count_validation_jobs()
     return {"pendente_baixa": total, "incompletos": max(0, total - completos), "completos": completos, "processando": jobs.get("processando", 0), "falha": jobs.get("falha", 0), "validado": jobs.get("validado", 0)}
-
 @router.get("/mtrs")
 async def list_mtrs(receiver_name: Optional[str] = None, status: Optional[str] = None, issuer: Optional[str] = None, generator_name: Optional[str] = None, hauler_name: Optional[str] = None, material_name: Optional[str] = None, number: Optional[str] = None, planned_date_at: Optional[str] = None, page: int = 1, page_size: int = 100):
     client = get_mtr_manager()
@@ -40,19 +36,16 @@ async def list_mtrs(receiver_name: Optional[str] = None, status: Optional[str] =
     else:
         for r in data.get("results", []): r["motorista"] = ""; r["placa"] = ""; r["peso_coletado"] = 0
     return data
-
 class BaixaItem(BaseModel):
     collect_id: str
     mtr_number: str
     motorista: str
     placa: str
     peso_coletado: float = 0
-
 class BaixaRequest(BaseModel):
     items: List[BaixaItem]
     responsavel: str = ""
     data_recebimento: str = ""
-
 @router.post("/baixa")
 async def trigger_baixa(request: BaixaRequest, background_tasks: BackgroundTasks):
     print(f"[BAIXA] {len(request.items)} items, resp={request.responsavel}, date={request.data_recebimento}")
@@ -68,7 +61,7 @@ async def trigger_baixa(request: BaixaRequest, background_tasks: BackgroundTasks
     if not resp: raise HTTPException(400, "Nenhum responsavel.")
     data_ms = 0
     if request.data_recebimento:
-        try: data_ms = int(datetime.fromisoformat(request.data_recebimento).timestamp() * 1000)
+        try: data_ms = int(datetime.fromisoformat(request.data_recebimento + "T12:00:00").timestamp() * 1000)
         except: data_ms = int(time.time() * 1000)
     else: data_ms = int(time.time() * 1000)
     valid, errors = [], []
@@ -84,7 +77,6 @@ async def trigger_baixa(request: BaixaRequest, background_tasks: BackgroundTasks
     print(f"[BAIXA] Scheduling background task")
     background_tasks.add_task(process_baixa_batch, batch_id=batch_id, credential=cred, mtrs=valid, responsavel=resp, data_recebimento_ms=data_ms)
     return {"batch_id": batch_id, "message": f"Baixa iniciada: {len(valid)} MTR(s).", "total": len(valid), "errors": errors, "estimated_minutes": round(len(valid) * 0.27, 1)}
-
 @router.post("/baixa/{batch_id}/cancel")
 async def cancel_baixa(batch_id: str):
     p = await database.get_batch_progress(batch_id)
@@ -93,17 +85,14 @@ async def cancel_baixa(batch_id: str):
     request_cancel(batch_id)
     await database.update_batch_progress(batch_id, {"state": "cancelling", "message": "Cancelando..."})
     return {"message": "Cancelamento solicitado"}
-
 @router.get("/validation-jobs")
 async def list_validation_jobs(state: Optional[str] = None, batch_id: Optional[str] = None):
     states = [state] if state else None
     jobs = await database.get_validation_jobs(states=states, batch_id=batch_id)
     return {"jobs": jobs, "count": len(jobs)}
-
 @router.delete("/validation-jobs/{collect_id}")
 async def remove_validation_job(collect_id: str):
     await database.delete_validation_job(collect_id); return {"message": "Removido"}
-
 @router.post("/validation-jobs/{collect_id}/retry")
 async def retry_validation_job(collect_id: str, background_tasks: BackgroundTasks):
     jobs = await database.get_validation_jobs(states=["falha"])
@@ -120,57 +109,44 @@ async def retry_validation_job(collect_id: str, background_tasks: BackgroundTask
     await database.create_batch_progress(bid, 1)
     background_tasks.add_task(process_baixa_batch, batch_id=bid, credential=creds[0], mtrs=[{"collect_id": collect_id, "mtr_number": job["mtr_number"], "motorista": mot, "placa": pla, "peso_coletado": meta.get("peso_coletado", 0) if meta else 0}])
     return {"message": "Retry iniciado", "batch_id": bid}
-
 @router.get("/batch-progress")
 async def list_batches():
     return {"batches": await database.list_batch_progress()}
-
 @router.get("/batch-progress/{batch_id}")
 async def get_batch(batch_id: str):
     p = await database.get_batch_progress(batch_id)
     if not p: raise HTTPException(404, "Nao encontrado")
     return p
-
 class CredentialCreate(BaseModel):
     orgao: str; unidade: str; unidade_codigo: int; login: str; senha: str; responsaveis: Optional[List[str]] = []
-
 class CredentialUpdate(BaseModel):
     orgao: Optional[str] = None; unidade: Optional[str] = None; unidade_codigo: Optional[int] = None; login: Optional[str] = None; senha: Optional[str] = None; responsaveis: Optional[List[str]] = None
-
 @router.get("/credentials")
 async def list_creds(): return await database.list_credentials()
-
 @router.get("/credentials/{cred_id}")
 async def get_cred(cred_id: int):
     c = await database.get_credential(cred_id)
     if not c: raise HTTPException(404, "Nao encontrada")
     return c
-
 @router.post("/credentials")
 async def create_cred(data: CredentialCreate): return await database.create_credential(data.model_dump())
-
 @router.put("/credentials/{cred_id}")
 async def update_cred(cred_id: int, data: CredentialUpdate):
     if not await database.get_credential(cred_id): raise HTTPException(404, "Nao encontrada")
     return await database.update_credential(cred_id, data.model_dump(exclude_unset=True))
-
 @router.delete("/credentials/{cred_id}")
 async def delete_cred(cred_id: int):
     if not await database.get_credential(cred_id): raise HTTPException(404, "Nao encontrada")
     await database.delete_credential(cred_id); return {"detail": "Removida"}
-
 class MetadataUpdate(BaseModel):
     motorista: Optional[str] = None; placa: Optional[str] = None; peso_coletado: Optional[float] = None; observacao: Optional[str] = None
-
 @router.put("/coletas/{collect_id}/metadata")
 async def update_meta(collect_id: str, data: MetadataUpdate):
     d = {k: v for k, v in data.model_dump().items() if v is not None}
     if not d: raise HTTPException(400, "Nenhum campo")
     return await database.upsert_collection_metadata(collect_id, d)
-
 class BulkMetadataUpdate(BaseModel):
     collect_ids: List[str]; motorista: Optional[str] = None; placa: Optional[str] = None; peso_coletado: Optional[float] = None
-
 @router.put("/coletas/metadata/bulk")
 async def bulk_meta(data: BulkMetadataUpdate):
     d = {}
