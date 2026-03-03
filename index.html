@@ -742,4 +742,17 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--musa-gre
     async function deleteCred(id) {
         if (!confirm('Remover esta credencial?')) return;
         try {
-            await fetch(API + '/credentials/' + id, { method: 'DELETE'
+               async function deleteCred(id) {
+        if (!confirm('Remover esta credencial?')) return;
+        try {
+            await fetch(API + '/credentials/' + id, { method: 'DELETE' });
+            toast('Credencial removida', 'success');
+            loadCredentials();
+            checkCredentials();
+        } catch(e) { toast('Erro: ' + e.message, 'error'); }
+    }
+
+    init();
+</script>
+</body>
+</html>
